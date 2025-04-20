@@ -9,9 +9,9 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
   // Default headers
-  const headers = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...options.headers as Record<string, string>,
   };
 
   // Include auth token if available
@@ -22,6 +22,8 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   } else {
     console.warn('No auth token available for API request');
   }
+
+  // CORS headers are set by the server, not the client
 
   try {
     console.log(`Fetching ${url} with method ${options.method || 'GET'}`);
@@ -34,9 +36,9 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
       cache: 'no-cache',
     });
 
+    // Log response details for debugging
+    console.log('Response status:', response.status);
     console.log('Response headers:', [...response.headers.entries()]);
-
-    console.log(`Response status: ${response.status}`);
 
     // Handle HTTP errors
     if (!response.ok) {
@@ -66,12 +68,16 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     const data = await response.json();
     console.log('API response data:', data);
     return data;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Fetch error:', error);
     console.error('Request details:', { url, endpoint, method: options.method || 'GET' });
 
     // Propagate the error with more context
-    throw new Error(`API request failed: ${error.message}`);
+    if (error instanceof Error) {
+      throw new Error(`API request failed: ${error.message}`);
+    } else {
+      throw new Error(`API request failed: ${String(error)}`);
+    }
   }
 }
 

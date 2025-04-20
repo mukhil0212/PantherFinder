@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -24,6 +24,12 @@ def create_app(config=None):
     # Configure the app
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-testing')
 
+    # Import and register CORS middleware
+    from app.middleware.cors_middleware import handle_options_request
+
+    # Handle OPTIONS requests for CORS preflight
+    app.before_request(lambda: handle_options_request() if request.method == 'OPTIONS' else None)
+
     # Configure database - using SQLite for local development
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL', 'sqlite:///pantherfinder.db'
@@ -34,7 +40,14 @@ def create_app(config=None):
     # Initialize extensions with app
     db.init_app(app)
     migrate.init_app(app, db)
-    CORS(app)
+
+    # Configure CORS to allow requests from frontend
+    CORS(app,
+         origins=["http://localhost:3000", "https://pantherfinder.vercel.app"],
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+
     jwt.init_app(app)
 
     # Register blueprints
@@ -51,5 +64,15 @@ def create_app(config=None):
     app.register_blueprint(locations_bp, url_prefix='/api/locations')
     app.register_blueprint(claims_bp, url_prefix='/api/claims')
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+
+    # Add a health check endpoint
+    @app.route('/api/health', methods=['GET'])
+    def health_check():
+        return {'status': 'ok', 'message': 'API is running'}, 200
+
+    # Add a root endpoint
+    @app.route('/', methods=['GET'])
+    def root():
+        return {'status': 'ok', 'message': 'PantherFinder API is running'}, 200
 
     return app
