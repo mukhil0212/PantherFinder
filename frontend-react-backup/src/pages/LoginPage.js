@@ -1,24 +1,29 @@
 import React, { useState } from 'react';
-import { Box, Paper, TextField, Button, Typography, Container } from '@mui/material';
+import { Box, Paper, TextField, Button, Typography, Container, Alert, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-const RegisterPage = () => {
+const LoginPage = () => {
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     password: '',
-    confirmPassword: '',
   });
+  const { login, loading, error, setError } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Implement registration logic
-    console.log('Registration attempt:', formData);
+    try {
+      await login(formData);
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Login error:', err);
+      // Error is already set in the auth context
+    }
   };
 
   return (
@@ -26,21 +31,13 @@ const RegisterPage = () => {
       <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
           <Typography variant="h4" align="center" gutterBottom>
-            Create Account
+            Welcome Back
           </Typography>
           <Typography variant="body1" align="center" color="text.secondary" sx={{ mb: 3 }}>
-            Join PantherFinder to find or report lost items
+            Sign in to PantherFinder
           </Typography>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Full Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              margin="normal"
-              required
-            />
             <TextField
               fullWidth
               label="Email"
@@ -50,6 +47,7 @@ const RegisterPage = () => {
               onChange={handleChange}
               margin="normal"
               required
+              disabled={loading}
             />
             <TextField
               fullWidth
@@ -60,16 +58,7 @@ const RegisterPage = () => {
               onChange={handleChange}
               margin="normal"
               required
-            />
-            <TextField
-              fullWidth
-              label="Confirm Password"
-              name="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              margin="normal"
-              required
+              disabled={loading}
             />
             <Button
               type="submit"
@@ -77,14 +66,15 @@ const RegisterPage = () => {
               variant="contained"
               size="large"
               sx={{ mt: 3, mb: 2 }}
+              disabled={loading}
             >
-              Sign Up
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
             </Button>
           </form>
           <Typography align="center">
-            Already have an account?{' '}
-            <Button color="primary" onClick={() => navigate('/login')}>
-              Sign In
+            Don't have an account?{' '}
+            <Button color="primary" onClick={() => navigate('/register')}>
+              Sign Up
             </Button>
           </Typography>
         </Paper>
@@ -93,4 +83,4 @@ const RegisterPage = () => {
   );
 };
 
-export default RegisterPage;
+export default LoginPage;

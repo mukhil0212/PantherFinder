@@ -13,28 +13,41 @@ import {
   Avatar,
   Tooltip,
   useMediaQuery,
-  useTheme
+  alpha,
+  InputBase,
+  Divider,
+  Fade
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
   AccountCircle,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Dashboard as DashboardIcon,
+  Person as PersonIcon,
+  AdminPanelSettings as AdminIcon,
+  Logout as LogoutIcon,
+  Login as LoginIcon,
+  PersonAdd as RegisterIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme as useMuiTheme } from '@mui/material/styles';
+import { useTheme } from '../../context/ThemeContext';
+import ThemeToggle from '../ThemeToggle';
 import { notificationsApi } from '../../services/api';
 
 const Header = ({ toggleSidebar }) => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+  const muiTheme = useMuiTheme();
+  const { mode } = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
-  
+
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -42,7 +55,7 @@ const Header = ({ toggleSidebar }) => {
   const handleClose = () => {
     setAnchorEl(null);
   };
-  
+
   const handleNotificationMenu = (event) => {
     setNotificationAnchorEl(event.currentTarget);
     fetchNotifications();
@@ -51,16 +64,16 @@ const Header = ({ toggleSidebar }) => {
   const handleNotificationClose = () => {
     setNotificationAnchorEl(null);
   };
-  
+
   const handleLogout = () => {
     logout();
     handleClose();
     navigate('/');
   };
-  
+
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     try {
       const response = await notificationsApi.getNotifications({ is_read: false, per_page: 5 });
       setNotifications(response.notifications);
@@ -69,7 +82,7 @@ const Header = ({ toggleSidebar }) => {
       console.error('Error fetching notifications:', error);
     }
   }, [isAuthenticated]);
-  
+
   const markAsRead = async (notificationId) => {
     try {
       await notificationsApi.markAsRead(notificationId);
@@ -78,17 +91,17 @@ const Header = ({ toggleSidebar }) => {
       console.error('Error marking notification as read:', error);
     }
   };
-  
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
-      
+
       // Fetch notifications every minute
       const interval = setInterval(fetchNotifications, 60000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, fetchNotifications]);
-  
+
   return (
     <AppBar position="sticky">
       <Toolbar>
@@ -103,7 +116,7 @@ const Header = ({ toggleSidebar }) => {
             <MenuIcon />
           </IconButton>
         )}
-        
+
         <Typography
           variant="h6"
           component={RouterLink}
@@ -117,7 +130,7 @@ const Header = ({ toggleSidebar }) => {
         >
           PantherFinder
         </Typography>
-        
+
         {!isMobile && (
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Button
@@ -130,7 +143,7 @@ const Header = ({ toggleSidebar }) => {
             </Button>
           </Box>
         )}
-        
+
         {isAuthenticated ? (
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Tooltip title="Notifications">
@@ -143,7 +156,7 @@ const Header = ({ toggleSidebar }) => {
                 </Badge>
               </IconButton>
             </Tooltip>
-            
+
             <Menu
               anchorEl={notificationAnchorEl}
               anchorOrigin={{
@@ -161,7 +174,7 @@ const Header = ({ toggleSidebar }) => {
               {notifications.length > 0 ? (
                 <>
                   {notifications.map((notification) => (
-                    <MenuItem 
+                    <MenuItem
                       key={notification.id}
                       onClick={() => {
                         markAsRead(notification.id);
@@ -170,7 +183,7 @@ const Header = ({ toggleSidebar }) => {
                           navigate(`/items/${notification.item_id}`);
                         }
                       }}
-                      sx={{ 
+                      sx={{
                         whiteSpace: 'normal',
                         maxWidth: 300,
                         fontWeight: notification.is_read ? 'normal' : 'bold'
@@ -179,7 +192,7 @@ const Header = ({ toggleSidebar }) => {
                       {notification.message}
                     </MenuItem>
                   ))}
-                  <MenuItem 
+                  <MenuItem
                     onClick={() => {
                       handleNotificationClose();
                       navigate('/notifications');
@@ -193,7 +206,7 @@ const Header = ({ toggleSidebar }) => {
                 <MenuItem onClick={handleNotificationClose}>No new notifications</MenuItem>
               )}
             </Menu>
-            
+
             <Tooltip title={user?.name || 'Account'}>
               <IconButton
                 color="inherit"
@@ -205,7 +218,7 @@ const Header = ({ toggleSidebar }) => {
                 </Avatar>
               </IconButton>
             </Tooltip>
-            
+
             <Menu
               anchorEl={anchorEl}
               anchorOrigin={{
@@ -220,7 +233,7 @@ const Header = ({ toggleSidebar }) => {
               open={Boolean(anchorEl)}
               onClose={handleClose}
             >
-              <MenuItem 
+              <MenuItem
                 onClick={() => {
                   handleClose();
                   navigate('/dashboard');
@@ -228,7 +241,7 @@ const Header = ({ toggleSidebar }) => {
               >
                 Dashboard
               </MenuItem>
-              <MenuItem 
+              <MenuItem
                 onClick={() => {
                   handleClose();
                   navigate('/profile');
@@ -237,7 +250,7 @@ const Header = ({ toggleSidebar }) => {
                 Profile
               </MenuItem>
               {user?.role === 'admin' && (
-                <MenuItem 
+                <MenuItem
                   onClick={() => {
                     handleClose();
                     navigate('/admin');
