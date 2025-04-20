@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import BackgroundBeamsDemo from '@/components/background-beams-demo';
 import NavbarDemo from '@/components/navbar-menu-demo';
 import { ItemCard } from '@/components/ui/card';
+import { BackgroundBeams } from '@/components/ui/background-beams';
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
