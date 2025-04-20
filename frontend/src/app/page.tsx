@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
+import BackgroundBeamsDemo from '@/components/background-beams-demo';
+import NavbarDemo from '@/components/navbar-menu-demo';
+import { ItemCard } from '@/components/ui/card';
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
@@ -38,30 +41,14 @@ export default function Home() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full">
+      <NavbarDemo />
+
       {/* Hero Section */}
-      <div className="relative rounded-xl overflow-hidden mb-16">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-90"></div>
-        <div className="relative z-10 px-8 py-16 sm:px-16 sm:py-24 lg:py-32 lg:px-24 text-white">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            Discover Lost &amp; Found, Reimagined
-          </h1>
-          <p className="mt-6 max-w-lg text-xl sm:max-w-3xl">
-            A modern platform to connect lost items with their owners. Effortlessly search, submit, and track your items.
-          </p>
-          <div className="mt-10">
-            <Link
-              href={isAuthenticated ? '/items' : '/auth/register'}
-              className="inline-block rounded-md border border-transparent bg-white px-8 py-3 text-base font-medium text-blue-600 hover:bg-gray-100 hover:text-blue-800 transition-colors"
-            >
-              {isAuthenticated ? 'Explore Items' : 'Join Now'}
-            </Link>
-          </div>
-        </div>
-      </div>
+      <BackgroundBeamsDemo />
 
       {/* Features Section */}
-      <div className="py-12">
+      <div className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
             How It Works
@@ -113,60 +100,55 @@ export default function Home() {
       </div>
 
       {/* Recently Found Items Section */}
-      <div className="py-12">
+      <div className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl text-center mb-12">
           Recently Found Items
         </h2>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {featuredItems.map((item) => (
-            <Link key={item.id} href={`/items/${item.id}`} className="group">
-              <div className="overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-md hover:shadow-xl transition-shadow duration-300">
-                <div className="relative h-48 w-full overflow-hidden">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">{item.name}</h3>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{item.category}</p>
-                  <div className="mt-4 flex items-center">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">{item.location}</span>
-                  </div>
-                </div>
-              </div>
-            </Link>
+            <ItemCard
+              key={item.id}
+              id={item.id.toString()}
+              title={item.name}
+              description="A detailed description of the item would go here. This is a placeholder text to show how the card would look with a longer description."
+              category={item.category}
+              location={item.location}
+              date={item.date}
+              status={item.status.toLowerCase()}
+              imageUrl={item.image}
+              href={`/items/${item.id}`}
+            />
           ))}
         </div>
       </div>
 
       {/* Call to Action Section */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl my-12 py-12 px-6 sm:px-12">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Ready to Get Started?
-          </h2>
-          <p className="mt-4 text-xl text-gray-600 dark:text-gray-300">
-            Join our community to help reunite lost items with their owners.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-            <Link
-              href={isAuthenticated ? '/submit-item' : '/auth/register'}
-              className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-5 py-3 text-base font-medium text-white hover:bg-blue-700 transition-colors"
-            >
-              {isAuthenticated ? 'Submit Found Item' : 'Sign Up Now'}
-            </Link>
-            <Link
-              href="/items"
-              className="inline-flex items-center justify-center rounded-md border border-blue-600 bg-transparent px-5 py-3 text-base font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-            >
-              Browse Items
-            </Link>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-12">
+        <div className="bg-neutral-950 rounded-xl py-12 px-6 sm:px-12 relative overflow-hidden">
+          <div className="absolute inset-0">
+            <BackgroundBeams />
+          </div>
+          <div className="text-center relative z-10">
+            <h2 className="text-3xl font-bold text-white">
+              Ready to Get Started?
+            </h2>
+            <p className="mt-4 text-xl text-gray-300">
+              Join our community to help reunite lost items with their owners.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+              <Link
+                href={isAuthenticated ? '/submit-item' : '/auth/register'}
+                className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-5 py-3 text-base font-medium text-white hover:bg-blue-700 transition-colors"
+              >
+                {isAuthenticated ? 'Submit Found Item' : 'Sign Up Now'}
+              </Link>
+              <Link
+                href="/items"
+                className="inline-flex items-center justify-center rounded-md border border-white bg-transparent px-5 py-3 text-base font-medium text-white hover:bg-white/10 transition-colors"
+              >
+                Browse Items
+              </Link>
+            </div>
           </div>
         </div>
       </div>

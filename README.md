@@ -1,40 +1,137 @@
-# PantherFinder
+# PantherFinder - Lost and Found Application
 
-A comprehensive lost and found system designed to help users locate and claim their lost items efficiently.
-
-## Overview
-
-Panther Finder is a web-based application that facilitates the management of lost and found items. It provides a platform for users to submit found items, search for lost items, and claim their belongings through a secure verification process.
+PantherFinder is a modern web application designed to help university students find their lost items on campus. It provides a platform for users to report found items, search for lost items, and claim items that belong to them.
 
 ## Features
 
-- **Item Submission**: Submit found items with detailed information and images
-- **Search & Retrieval**: Search for lost items using various criteria
-- **Claim Process**: Secure verification for claiming items
-- **CRUD Operations**: Full management of users, items, locations, claims, and notifications
-- **Geolocation**: Find the nearest drop-off location
-- **Notifications**: Automated alerts for matching items
-- **User Management**: Role-based access control
-- **Admin Panel**: Comprehensive management interface
+- **User Authentication**: Secure login and registration system
+- **Item Submission**: Submit found items with details and images
+- **Item Search**: Search for lost items with filters (category, location, date)
+- **Item Claims**: Claim items that belong to you
+- **Notifications**: Get notified when matching items are found
+- **Dark/Light Mode**: Toggle between dark and light themes
+- **Responsive Design**: Works on desktop and mobile devices
+- **Modern UI**: Sleek and intuitive user interface with Tailwind CSS
 
 ## Tech Stack
 
+- **Frontend**: Next.js, React, Tailwind CSS
+- **Backend**: Flask (Python)
 - **Database**: Supabase (PostgreSQL)
-- **Backend**: Python with Flask
-- **Frontend**: React.js
-- **APIs**: Geolocation, Notification services
-
-## Project Structure
-
-The project is organized into backend and frontend components:
-
-- **Backend**: Flask-based API with models for users, items, locations, claims, and notifications
-- **Frontend**: React application with components for user interface and interaction
+- **Authentication**: Supabase Auth
+- **Storage**: Supabase Storage
 
 ## Getting Started
 
-See the detailed setup instructions in the project directory.
+### Prerequisites
+
+- Node.js (v18 or higher)
+- Python 3.8 or higher
+- Git
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/mukhil0212/PantherFinder.git
+cd PantherFinder
+```
+
+### Frontend Setup
+
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create a `.env.local` file with your Supabase credentials:
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+4. Start the development server:
+```bash
+npm run dev
+```
+
+The frontend will be available at http://localhost:3000
+
+### Backend Setup
+
+1. Navigate to the backend directory:
+```bash
+cd backend
+```
+
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Create a `.env` file with your configuration:
+```
+SECRET_KEY=your_secret_key
+JWT_SECRET_KEY=your_jwt_secret
+DATABASE_URL=your_database_url
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_service_key
+```
+
+5. Run the Flask server:
+```bash
+FLASK_DEBUG=1 python run.py
+```
+
+The backend API will be available at http://localhost:5000
+
+## Project Structure
+
+```
+PantherFinder/
+├── frontend/               # Next.js frontend
+│   ├── public/             # Static assets
+│   ├── src/                # Source code
+│   │   ├── app/            # Next.js app router
+│   │   ├── components/     # React components
+│   │   ├── context/        # React context providers
+│   │   └── lib/            # Utility functions
+├── backend/                # Flask backend
+│   ├── app/                # Application code
+│   │   ├── models/         # Database models
+│   │   ├── routes/         # API routes
+│   │   └── utils/          # Utility functions
+│   └── run.py              # Entry point
+└── README.md               # Project documentation
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature-name`
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+- [Next.js](https://nextjs.org/)
+- [React](https://reactjs.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Flask](https://flask.palletsprojects.com/)
+- [Supabase](https://supabase.io/)
