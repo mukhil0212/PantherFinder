@@ -18,7 +18,7 @@ const Footer = () => {
           {new Date().getFullYear()}
           {' '}
           <Link color="inherit" href="#">
-            Lost & Found System
+            PantherFinder
           </Link>
           {' - All rights reserved.'}
         </Typography>

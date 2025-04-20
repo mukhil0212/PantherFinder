@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -58,7 +58,7 @@ const Header = ({ toggleSidebar }) => {
     navigate('/');
   };
   
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
     
     try {
@@ -68,7 +68,7 @@ const Header = ({ toggleSidebar }) => {
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
-  };
+  }, [isAuthenticated]);
   
   const markAsRead = async (notificationId) => {
     try {
@@ -87,7 +87,7 @@ const Header = ({ toggleSidebar }) => {
       const interval = setInterval(fetchNotifications, 60000);
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchNotifications]);
   
   return (
     <AppBar position="sticky">
@@ -115,7 +115,7 @@ const Header = ({ toggleSidebar }) => {
             fontWeight: 'bold'
           }}
         >
-          Lost & Found
+          PantherFinder
         </Typography>
         
         {!isMobile && (

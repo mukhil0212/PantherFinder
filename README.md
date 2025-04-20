@@ -1,4 +1,4 @@
-# Panther Finder
+# PantherFinder
 
 A comprehensive lost and found system designed to help users locate and claim their lost items efficiently.
 

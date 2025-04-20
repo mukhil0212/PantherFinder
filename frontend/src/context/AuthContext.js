@@ -12,6 +12,13 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Logout user
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    setAuthToken(null);
+  }, []);
+
   // Set axios default headers
   const setAuthToken = (token) => {
     if (token) {
@@ -43,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Error loading user:', err);
       logout();
     }
-  }, [token]);
+  }, [token, logout]);
   
   // Register user
   const register = async (userData) => {
@@ -93,12 +100,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  // Logout user
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    setAuthToken(null);
-  };
+
   
   // Update user profile
   const updateProfile = async (userData) => {

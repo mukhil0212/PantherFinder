@@ -1,16 +1,45 @@
 import os
-from supabase import create_client
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Supabase configuration
-SUPABASE_URL = os.environ.get('SUPABASE_URL')
-SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+# Mock Supabase client for local development
+class MockSupabaseClient:
+    def __init__(self):
+        self.tables = {}
 
-# Initialize Supabase client
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    def table(self, table_name):
+        if table_name not in self.tables:
+            self.tables[table_name] = MockTable(table_name)
+        return self.tables[table_name]
+
+class MockTable:
+    def __init__(self, name):
+        self.name = name
+        self.data = []
+        self.conditions = []
+
+    def select(self, columns):
+        return self
+
+    def insert(self, data):
+        return self
+
+    def update(self, data):
+        return self
+
+    def delete(self):
+        return self
+
+    def eq(self, column, value):
+        return self
+
+    def execute(self):
+        return {'data': []}
+
+# Initialize mock Supabase client
+supabase = MockSupabaseClient()
 
 def get_supabase_client():
     """Returns the Supabase client instance"""
