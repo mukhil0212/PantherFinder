@@ -26,6 +26,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    console.log('Form submitted');
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
@@ -40,16 +41,24 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
+    console.log('Registering user with data:', {
+      name: formData.name,
+      email: formData.email,
+      phone_number: formData.phone_number,
+      // Not logging password for security
+    });
 
     try {
-      await register({
+      const response = await register({
         name: formData.name,
         email: formData.email,
         password: formData.password,
         phone_number: formData.phone_number,
       });
+      console.log('Registration successful:', response);
       router.push('/dashboard');
     } catch (err: any) {
+      console.error('Registration error:', err);
       setError(err.message || 'Failed to register. Please try again.');
     } finally {
       setIsLoading(false);

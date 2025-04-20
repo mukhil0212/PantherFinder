@@ -1,15 +1,13 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from app.models.item import Item
-from app.models.user import User
-from app.models.notification import Notification
-from app import db
 from datetime import datetime
 import os
 import uuid
 from werkzeug.utils import secure_filename
+from app.utils.supabase import get_supabase_client
 
 items_bp = Blueprint('items', __name__)
+supabase = get_supabase_client()
 
 # Helper function to check if user is admin
 def is_admin():
@@ -36,19 +34,32 @@ def save_image(file):
 
 @items_bp.route('/', methods=['GET'])
 def get_items():
-    # Get query parameters for filtering
-    category = request.args.get('category')
-    status = request.args.get('status')
-    search = request.args.get('search')
-    
-    # Start with base query
-    query = Item.query
-    
-    # Apply filters if provided
-    if category:
-        query = query.filter(Item.category == category)
-    if status:
-        query = query.filter(Item.status == status)
+    try:
+        # Get query parameters for filtering
+        category = request.args.get('category')
+        status = request.args.get('status')
+        search = request.args.get('search')
+        
+        # Start with base query
+        query = supabase.table('items').select('*')
+        
+        # Apply filters if provided
+        if category:
+            query = query.eq('category', category)
+        if status:
+            query = query.eq('status', status)
+        if search:
+            query = query.ilike('name', f'%{search}%')
+            
+        # Execute query
+        response = query.execute()
+        
+        if response.data is not None:
+            return jsonify(response.data), 200
+        return jsonify([]), 200
+    except Exception as e:
+        print(f"Error fetching items: {str(e)}")
+        return jsonify({'error': 'Failed to fetch items'}), 500
     if search:
         search_term = f"%{search}%"
         query = query.filter(
@@ -189,3 +200,11 @@ def get_categories():
     category_list = [category[0] for category in categories]
     
     return jsonify({'categories': category_list}), 200
+
+@items_bp.route('/test-cors', methods=['GET', 'OPTIONS'])
+def test_cors():
+    response = jsonify({'message': 'CORS test successful'})
+    response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    return response

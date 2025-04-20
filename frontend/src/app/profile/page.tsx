@@ -15,6 +15,7 @@ export default function ProfilePage() {
   });
 
   const [passwordData, setPasswordData] = useState({
+    current_password: '',
     new_password: '',
     confirm_password: '',
   });
@@ -70,6 +71,11 @@ export default function ProfilePage() {
     e.preventDefault();
     setMessage({ type: '', text: '' });
 
+    if (!passwordData.current_password) {
+      setMessage({ type: 'error', text: 'Current password is required.' });
+      return;
+    }
+
     if (passwordData.new_password !== passwordData.confirm_password) {
       setMessage({ type: 'error', text: 'Passwords do not match.' });
       return;
@@ -84,10 +90,11 @@ export default function ProfilePage() {
 
     try {
       await changePassword({
+        current_password: passwordData.current_password,
         new_password: passwordData.new_password,
       });
       setMessage({ type: 'success', text: 'Password changed successfully!' });
-      setPasswordData({ new_password: '', confirm_password: '' });
+      setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to change password.' });
     } finally {
@@ -211,6 +218,21 @@ export default function ProfilePage() {
       {activeTab === 'password' && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <form onSubmit={handlePasswordSubmit}>
+            <div className="mb-4">
+              <label htmlFor="current_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Current Password
+              </label>
+              <input
+                type="password"
+                id="current_password"
+                name="current_password"
+                value={passwordData.current_password}
+                onChange={handlePasswordChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+
             <div className="mb-4">
               <label htmlFor="new_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 New Password

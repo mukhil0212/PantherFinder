@@ -12,13 +12,20 @@ export default function CORSTestPage() {
     setLoading(true);
     setResult('');
     setError('');
-    
+
     try {
+      console.log('Starting CORS test...');
       const response = await testCORS();
+      console.log('CORS test response:', response);
       setResult(JSON.stringify(response, null, 2));
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
       console.error('CORS Test Error:', err);
+      // Get more detailed error information
+      let errorMessage = err.message || 'An error occurred';
+      if (err.cause) {
+        errorMessage += '\n\nCause: ' + JSON.stringify(err.cause);
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -27,29 +34,29 @@ export default function CORSTestPage() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">CORS Test Page</h1>
-      
-      <button 
+
+      <button
         onClick={runTest}
         disabled={loading}
         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
       >
         {loading ? 'Testing...' : 'Test CORS'}
       </button>
-      
+
       {result && (
         <div className="mb-4">
           <h2 className="text-xl font-semibold mb-2">Success:</h2>
           <pre className="bg-green-100 p-4 rounded">{result}</pre>
         </div>
       )}
-      
+
       {error && (
         <div className="mb-4">
           <h2 className="text-xl font-semibold mb-2">Error:</h2>
           <pre className="bg-red-100 p-4 rounded">{error}</pre>
         </div>
       )}
-      
+
       <div className="mt-8">
         <h2 className="text-xl font-semibold mb-2">Instructions:</h2>
         <ol className="list-decimal list-inside">

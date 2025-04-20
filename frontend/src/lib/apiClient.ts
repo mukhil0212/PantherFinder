@@ -1,11 +1,8 @@
 // API base URL - adjust this to your backend URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// Always use the real backend API
-
 // Helper function for making API requests
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
-
   const url = `${API_BASE_URL}${endpoint}`;
 
   // Default headers
@@ -23,18 +20,13 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     console.warn('No auth token available for API request');
   }
 
-  // CORS headers are set by the server, not the client
-
   try {
     console.log(`Fetching ${url} with method ${options.method || 'GET'}`);
-
     console.log('Making request to:', url, 'with headers:', headers);
 
     const response = await fetch(url, {
       ...options,
       headers,
-      // Don't use credentials: 'include' unless you're sending cookies
-      // For Authorization headers, it's not strictly necessary
       mode: 'cors',
       cache: 'no-cache',
     });
@@ -49,61 +41,40 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
       try {
         const errorData = await response.json();
         console.error('API error response:', errorData);
-        errorMessage = errorData.error || errorData.message || errorMessage;
-      } catch (jsonError) {
-        console.error('Failed to parse error response as JSON:', jsonError);
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        console.error('Could not parse error response as JSON');
       }
-
-      // Log detailed error information
-      console.error(`API Error (${response.status}): ${errorMessage}`);
-      console.error('Request details:', { endpoint, method: options.method || 'GET' });
-
-      // For authentication errors, clear the token
-      if (response.status === 401) {
-        localStorage.removeItem('authToken');
-        console.warn('Authentication token cleared due to 401 response');
-      }
-
       throw new Error(errorMessage);
     }
 
-    // Parse JSON response
-    const data = await response.json();
-    console.log('API response data:', data);
-    return data;
-  } catch (error: unknown) {
-    console.error('Fetch error:', error);
-    console.error('Request details:', { url, endpoint, method: options.method || 'GET' });
-
-    // Propagate the error with more context
-    if (error instanceof Error) {
-      throw new Error(`API request failed: ${error.message}`);
-    } else {
-      throw new Error(`API request failed: ${String(error)}`);
-    }
+    return response.json();
+  } catch (error) {
+    console.error('Request details:', { url, endpoint, options });
+    throw new Error(`API request failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 // Items API
-export const getItems = async (filters = {}) => {
+const getItems = async (filters = {}) => {
   const queryParams = new URLSearchParams(filters as Record<string, string>).toString();
-  return fetchAPI(`/api/items?${queryParams}`);
+  return fetchAPI(`/items?${queryParams}`);
 };
 
-export const getItemById = async (id: string) => {
-  return fetchAPI(`/api/items/${id}`);
+const getItemById = async (id: string) => {
+  return fetchAPI(`/items/${id}`);
 };
 
-export const createItem = async (itemData: any) => {
-  return fetchAPI('/api/items', {
+const createItem = async (itemData: any) => {
+  return fetchAPI('/items', {
     method: 'POST',
     body: JSON.stringify(itemData),
   });
 };
 
-export const submitItem = async (formData: FormData) => {
+const submitItem = async (formData: FormData) => {
   // For file uploads, we need to use a different approach
-  const url = `${API_BASE_URL}/api/items`;
+  const url = `${API_BASE_URL}/items`;
 
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
@@ -117,7 +88,6 @@ export const submitItem = async (formData: FormData) => {
       method: 'POST',
       headers,
       body: formData,
-      credentials: 'include',
       mode: 'cors',
     });
 
@@ -125,9 +95,9 @@ export const submitItem = async (formData: FormData) => {
       let errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
       try {
         const errorData = await response.json();
-        errorMessage = errorData.error || errorData.message || errorMessage;
-      } catch (jsonError) {
-        console.error('Failed to parse error response as JSON:', jsonError);
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        console.error('Could not parse error response as JSON');
       }
       throw new Error(errorMessage);
     }
@@ -139,107 +109,156 @@ export const submitItem = async (formData: FormData) => {
   }
 };
 
-export const updateItem = async (id: string, itemData: any) => {
-  return fetchAPI(`/api/items/${id}`, {
+const updateItem = async (id: string, itemData: any) => {
+  return fetchAPI(`/items/${id}`, {
     method: 'PUT',
     body: JSON.stringify(itemData),
   });
 };
 
-export const deleteItem = async (id: string) => {
-  return fetchAPI(`/api/items/${id}`, {
+const deleteItem = async (id: string) => {
+  return fetchAPI(`/items/${id}`, {
     method: 'DELETE',
   });
 };
 
 // Claims API
-export const getClaims = async () => {
-  return fetchAPI('/api/claims');
+const getClaims = async () => {
+  return fetchAPI('/claims');
 };
 
-export const getClaimById = async (id: string) => {
-  return fetchAPI(`/api/claims/${id}`);
+const getClaimById = async (id: string) => {
+  return fetchAPI(`/claims/${id}`);
 };
 
-export const createClaim = async (claimData: any) => {
-  return fetchAPI('/api/claims', {
+const createClaim = async (claimData: any) => {
+  return fetchAPI('/claims', {
     method: 'POST',
     body: JSON.stringify(claimData),
   });
 };
 
-export const updateClaim = async (id: string, claimData: any) => {
-  return fetchAPI(`/api/claims/${id}`, {
+const updateClaim = async (id: string, claimData: any) => {
+  return fetchAPI(`/claims/${id}`, {
     method: 'PUT',
     body: JSON.stringify(claimData),
   });
 };
 
 // User Items API
-export const getUserItems = async () => {
-  return fetchAPI('/api/users/items');
+const getUserItems = async () => {
+  return fetchAPI('/users/items');
 };
 
 // User Claims API
-export const getUserClaims = async () => {
-  return fetchAPI('/api/users/claims');
+const getUserClaims = async () => {
+  return fetchAPI('/users/claims');
 };
 
 // Auth API
-export const login = async (credentials: { email: string; password: string }) => {
-  return fetchAPI('/api/auth/login', {
+const login = async (credentials: { email: string; password: string }) => {
+  return fetchAPI('/auth/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
   });
 };
 
-export const register = async (userData: any) => {
-  return fetchAPI('/api/auth/register', {
+const register = async (userData: any) => {
+  return fetchAPI('/auth/register', {
     method: 'POST',
     body: JSON.stringify(userData),
   });
 };
 
-export const logout = async () => {
-  localStorage.removeItem('authToken');
-  return { success: true };
+const logout = async () => {
+  return fetchAPI('/auth/logout', {
+    method: 'POST',
+  });
 };
 
-export const getCurrentUser = async () => {
-  return fetchAPI('/api/auth/me');
+const getCurrentUser = async () => {
+  return fetchAPI('/auth/me');
 };
 
 // Profile API
-export const getProfile = async () => {
-  return fetchAPI('/api/auth/profile');
+const getProfile = async () => {
+  return fetchAPI('/users/profile');
 };
 
-export const updateProfile = async (profileData: any) => {
-  return fetchAPI('/api/auth/profile', {
+const updateProfile = async (profileData: any) => {
+  return fetchAPI('/users/profile', {
     method: 'PUT',
     body: JSON.stringify(profileData),
   });
 };
 
-export const changePassword = async (passwordData: { current_password: string; new_password: string }) => {
-  return fetchAPI('/api/auth/change-password', {
-    method: 'PUT',
+const changePassword = async (passwordData: { current_password: string; new_password: string }) => {
+  return fetchAPI('/users/change-password', {
+    method: 'POST',
     body: JSON.stringify(passwordData),
   });
 };
 
 // Notifications API
-export const getNotifications = async () => {
-  return fetchAPI('/api/notifications');
+const getNotifications = async () => {
+  return fetchAPI('/notifications');
 };
 
-export const markNotificationAsRead = async (id: string) => {
-  return fetchAPI(`/api/notifications/${id}/mark-read`, {
-    method: 'PUT',
+const markNotificationAsRead = async (id: string) => {
+  return fetchAPI(`/notifications/${id}/read`, {
+    method: 'POST',
   });
 };
 
 // Test CORS
-export const testCORS = async () => {
-  return fetchAPI('/api/cors-test');
+const testCORS = async () => {
+  try {
+    // Try direct fetch first to see if CORS is working
+    console.log('Making direct fetch request to CORS test endpoint');
+    const directResponse = await fetch('http://localhost:5000/api/items/test-cors', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      mode: 'cors',
+    });
+
+    console.log('Direct fetch response:', directResponse);
+    if (directResponse.ok) {
+      return await directResponse.json();
+    } else {
+      throw new Error(`Direct fetch failed with status: ${directResponse.status}`);
+    }
+  } catch (directErr) {
+    console.error('Direct fetch error:', directErr);
+    // Fall back to using fetchAPI
+    console.log('Falling back to fetchAPI');
+    return fetchAPI('/items/test-cors');
+  }
+};
+
+// Export API functions
+export {
+  getItems,
+  getItemById,
+  createItem,
+  submitItem,
+  updateItem,
+  deleteItem,
+  getClaims,
+  getClaimById,
+  createClaim,
+  updateClaim,
+  getUserItems,
+  getUserClaims,
+  login,
+  register,
+  logout,
+  getCurrentUser,
+  getProfile,
+  updateProfile,
+  changePassword,
+  getNotifications,
+  markNotificationAsRead,
+  testCORS
 };

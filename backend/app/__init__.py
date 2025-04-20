@@ -1,9 +1,10 @@
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
+from datetime import datetime
 import os
 
 # Load environment variables
@@ -21,11 +22,18 @@ supabase = get_supabase_client()
 def create_app(config=None):
     app = Flask(__name__)
 
+    # Configure CORS
+    CORS(app, resources={
+        r"/*": {
+            "origins": ["http://localhost:3000"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
+
     # Configure the app
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-testing')
-
-    # No custom CORS middleware needed, using Flask-CORS
-
+    
     # Configure database - using SQLite for local development
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL', 'sqlite:///pantherfinder.db'
@@ -36,11 +44,24 @@ def create_app(config=None):
     # Initialize extensions with app
     db.init_app(app)
     migrate.init_app(app, db)
+    jwt.init_app(app)
 
-    # Configure CORS to allow requests from frontend
-    # When using credentials, we must specify exact origins (not '*')
+    # Configure CORS properly using Flask-CORS
     cors_origins = ["http://localhost:3000", "https://pantherfinder.vercel.app"]
+    CORS(app, 
+         resources={r"/api/*": {"origins": cors_origins}},
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
+    # Handle OPTIONS requests
+    @app.before_request
+    def handle_options():
+        if request.method == 'OPTIONS':
+            response = app.make_default_options_response()
+            return response
+
+    # Also use Flask-CORS for good measure
     CORS(app,
          resources={r"/api/*": {"origins": cors_origins}},
          supports_credentials=True,
@@ -72,7 +93,12 @@ def create_app(config=None):
     # Add a CORS test endpoint
     @app.route('/api/cors-test', methods=['GET', 'OPTIONS'])
     def cors_test():
-        return {'status': 'ok', 'message': 'CORS is working'}, 200
+        # Print request details for debugging
+        print(f"CORS Test Request: {request.method} {request.path}")
+        print(f"CORS Test Headers: {dict(request.headers)}")
+
+        # Return a simple response
+        return {'status': 'ok', 'message': 'CORS is working', 'timestamp': str(datetime.now())}, 200
 
     # Add a root endpoint
     @app.route('/', methods=['GET'])

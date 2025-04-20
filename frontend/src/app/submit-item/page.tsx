@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
+import * as api from '../../lib/apiClient';
 
 export default function SubmitItemPage() {
   const { isAuthenticated, loading } = useAuth();
@@ -73,8 +74,21 @@ export default function SubmitItemPage() {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Create form data for file upload
+      const formDataObj = new FormData();
+
+      // Add all text fields
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataObj.append(key, value);
+      });
+
+      // Add images
+      images.forEach(image => {
+        formDataObj.append('images', image);
+      });
+
+      // Submit the item
+      const response = await api.submitItem(formDataObj);
 
       // Success
       setMessage({ type: 'success', text: 'Item submitted successfully!' });
