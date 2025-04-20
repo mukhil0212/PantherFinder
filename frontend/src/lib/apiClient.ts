@@ -1,16 +1,10 @@
 // API base URL - adjust this to your backend URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// Flag to determine if we should use the backend API or not
-const USE_BACKEND_API = false; // Set to false to disable backend API calls and use mock data
+// Always use the real backend API
 
 // Helper function for making API requests
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
-  // If we're not using the backend API, return mock data
-  if (!USE_BACKEND_API) {
-    console.log(`Backend API disabled, would have fetched: ${endpoint}`);
-    return getMockResponse(endpoint, options);
-  }
 
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -24,6 +18,9 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    console.log('Using auth token:', token.substring(0, 10) + '...');
+  } else {
+    console.warn('No auth token available for API request');
   }
 
   try {
@@ -34,7 +31,10 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
       headers,
       credentials: 'include',
       mode: 'cors',
+      cache: 'no-cache',
     });
+
+    console.log('Response headers:', [...response.headers.entries()]);
 
     console.log(`Response status: ${response.status}`);
 
@@ -49,10 +49,14 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
         console.error('Failed to parse error response as JSON:', jsonError);
       }
 
-      // If backend is unavailable, return mock data instead of throwing
-      if (response.status === 404 || response.status === 500 || response.status === 502 || response.status === 503) {
-        console.warn('Backend unavailable, using mock data');
-        return getMockResponse(endpoint, options);
+      // Log detailed error information
+      console.error(`API Error (${response.status}): ${errorMessage}`);
+      console.error('Request details:', { endpoint, method: options.method || 'GET' });
+
+      // For authentication errors, clear the token
+      if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        console.warn('Authentication token cleared due to 401 response');
       }
 
       throw new Error(errorMessage);
@@ -64,130 +68,11 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     return data;
   } catch (error) {
     console.error('Fetch error:', error);
+    console.error('Request details:', { url, endpoint, method: options.method || 'GET' });
 
-    // If fetch fails completely (e.g., network error), return mock data
-    console.warn('Fetch failed, using mock data');
-    return getMockResponse(endpoint, options);
+    // Propagate the error with more context
+    throw new Error(`API request failed: ${error.message}`);
   }
-}
-
-// Function to generate mock responses when backend is unavailable
-function getMockResponse(endpoint: string, options: RequestInit = {}) {
-  const method = options.method || 'GET';
-
-  // Mock user data
-  const mockUser = {
-    id: 'mock-user-id',
-    name: 'Mock User',
-    email: 'mock@example.com',
-    phone_number: '123-456-7890',
-    role: 'user',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-
-  // Handle different endpoints
-  if (endpoint === '/api/auth/me' || endpoint === '/api/auth/profile') {
-    return mockUser;
-  }
-
-  if (endpoint === '/api/auth/login' && method === 'POST') {
-    return {
-      message: 'Login successful',
-      user: mockUser,
-      access_token: 'mock-access-token'
-    };
-  }
-
-  if (endpoint === '/api/auth/register' && method === 'POST') {
-    return {
-      message: 'User registered successfully',
-      user: mockUser,
-      access_token: 'mock-access-token'
-    };
-  }
-
-  if (endpoint === '/api/users/profile') {
-    return mockUser;
-  }
-
-  if (endpoint.startsWith('/api/items')) {
-    return {
-      items: [
-        {
-          id: 'mock-item-1',
-          name: 'Mock Item 1',
-          category: 'Electronics',
-          location: 'Library',
-          date_found: new Date().toISOString(),
-          description: 'A mock item for testing',
-          status: 'found',
-          user_found_id: 'mock-user-id'
-        }
-      ],
-      total: 1,
-      pages: 1,
-      current_page: 1
-    };
-  }
-
-  if (endpoint.startsWith('/api/notifications')) {
-    return {
-      notifications: [
-        {
-          id: 'mock-notification-1',
-          title: 'New Item Found',
-          message: 'Someone found an item that matches your lost item description.',
-          created_at: new Date().toISOString(),
-          read: false,
-          type: 'item_found',
-          related_id: 'mock-item-1'
-        }
-      ],
-      total: 1,
-      pages: 1,
-      current_page: 1,
-      unread_count: 1
-    };
-  }
-
-  if (endpoint === '/api/users/items') {
-    return {
-      items: [
-        {
-          id: 'mock-user-item-1',
-          name: 'My Lost Laptop',
-          category: 'Electronics',
-          location: 'Library',
-          date_found: new Date().toISOString(),
-          description: 'My personal laptop that I submitted',
-          status: 'found',
-          user_found_id: 'mock-user-id'
-        }
-      ],
-      total: 1
-    };
-  }
-
-  if (endpoint === '/api/users/claims') {
-    return {
-      claims: [
-        {
-          id: 'mock-claim-1',
-          item_id: 'mock-item-1',
-          item_name: 'MacBook Pro',
-          date_claimed: new Date().toISOString(),
-          status: 'pending',
-          item_category: 'Electronics',
-          item_location: 'Library'
-        }
-      ],
-      total: 1
-    };
-  }
-
-  // Default response
-  return { message: 'Mock response for ' + endpoint };
 }
 
 // Items API
@@ -317,18 +202,18 @@ export const getCurrentUser = async () => {
 
 // Profile API
 export const getProfile = async () => {
-  return fetchAPI('/api/users/profile');
+  return fetchAPI('/api/auth/profile');
 };
 
 export const updateProfile = async (profileData: any) => {
-  return fetchAPI('/api/users/profile', {
+  return fetchAPI('/api/auth/profile', {
     method: 'PUT',
     body: JSON.stringify(profileData),
   });
 };
 
 export const changePassword = async (passwordData: { current_password: string; new_password: string }) => {
-  return fetchAPI('/api/users/password', {
+  return fetchAPI('/api/auth/change-password', {
     method: 'PUT',
     body: JSON.stringify(passwordData),
   });
