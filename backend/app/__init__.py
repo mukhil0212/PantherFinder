@@ -37,8 +37,15 @@ def create_app(config=None):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Configure CORS to allow requests from any origin
-    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+    # Configure CORS to allow requests from frontend
+    # When using credentials, we must specify exact origins (not '*')
+    cors_origins = ["http://localhost:3000", "https://pantherfinder.vercel.app"]
+
+    CORS(app,
+         resources={r"/api/*": {"origins": cors_origins}},
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
     jwt.init_app(app)
 
@@ -61,6 +68,11 @@ def create_app(config=None):
     @app.route('/api/health', methods=['GET'])
     def health_check():
         return {'status': 'ok', 'message': 'API is running'}, 200
+
+    # Add a CORS test endpoint
+    @app.route('/api/cors-test', methods=['GET', 'OPTIONS'])
+    def cors_test():
+        return {'status': 'ok', 'message': 'CORS is working'}, 200
 
     # Add a root endpoint
     @app.route('/', methods=['GET'])

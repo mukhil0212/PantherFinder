@@ -28,9 +28,13 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   try {
     console.log(`Fetching ${url} with method ${options.method || 'GET'}`);
 
+    console.log('Making request to:', url, 'with headers:', headers);
+
     const response = await fetch(url, {
       ...options,
       headers,
+      // Don't use credentials: 'include' unless you're sending cookies
+      // For Authorization headers, it's not strictly necessary
       mode: 'cors',
       cache: 'no-cache',
     });
@@ -233,4 +237,9 @@ export const markNotificationAsRead = async (id: string) => {
   return fetchAPI(`/api/notifications/${id}/mark-read`, {
     method: 'PUT',
   });
+};
+
+// Test CORS
+export const testCORS = async () => {
+  return fetchAPI('/api/cors-test');
 };
