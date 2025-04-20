@@ -31,7 +31,6 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     const response = await fetch(url, {
       ...options,
       headers,
-      credentials: 'include',
       mode: 'cors',
       cache: 'no-cache',
     });

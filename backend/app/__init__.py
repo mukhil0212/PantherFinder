@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -24,11 +24,7 @@ def create_app(config=None):
     # Configure the app
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-testing')
 
-    # Import and register CORS middleware
-    from app.middleware.cors_middleware import handle_options_request
-
-    # Handle OPTIONS requests for CORS preflight
-    app.before_request(lambda: handle_options_request() if request.method == 'OPTIONS' else None)
+    # No custom CORS middleware needed, using Flask-CORS
 
     # Configure database - using SQLite for local development
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
@@ -41,12 +37,8 @@ def create_app(config=None):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Configure CORS to allow requests from frontend
-    CORS(app,
-         origins=["http://localhost:3000", "https://pantherfinder.vercel.app"],
-         supports_credentials=True,
-         allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials"],
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    # Configure CORS to allow requests from any origin
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
     jwt.init_app(app)
 
