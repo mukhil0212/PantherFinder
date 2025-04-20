@@ -1,9 +1,20 @@
 "use client";
 
 import { useTheme } from "@/components/theme-provider";
+import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch by only rendering after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="w-9 h-9"></div>; // Placeholder with same dimensions
+  }
 
   return (
     <button
