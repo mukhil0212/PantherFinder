@@ -12,6 +12,9 @@ PantherFinder is a modern web application designed to help university students f
 - **Dark/Light Mode**: Toggle between dark and light themes
 - **Responsive Design**: Works on desktop and mobile devices
 - **Modern UI**: Sleek and intuitive user interface with Tailwind CSS
+- **Animated Aurora Branding**: Eye-catching animated gradient effect on the PantherFinder brand name
+- **Customizable Navbar**: Large, visually prominent navbar with optional logo support
+- **Improved Accessibility**: Enhanced text visibility and error feedback for login and dashboard
 
 ## Tech Stack
 
@@ -55,12 +58,18 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 ```
 
-4. Start the development server:
-```bash
-npm run dev
-```
+4. (Optional) To use a custom logo, place `logo.png` in the `frontend/public/` directory and update the navbar/header code to display it.
 
-The frontend will be available at http://localhost:3000
+### Styling Notes
+
+- The navbar height and background have been adjusted for a cleaner, more modern look.
+- The aurora text effect is used for the PantherFinder brand name for increased visual appeal.
+- Non-standard CSS at-rules have been removed for full compatibility with Tailwind CSS and modern build tools.
+
+### Accessibility & UX
+
+- All important text and error messages are styled for maximum readability.
+- The login and dashboard pages have been improved for accessibility and feedback clarity.
 
 ### Backend Setup
 

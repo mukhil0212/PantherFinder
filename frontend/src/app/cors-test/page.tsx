@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { testCORS } from '@/lib/apiClient';
 
 export default function CORSTestPage() {
@@ -18,11 +18,11 @@ export default function CORSTestPage() {
       const response = await testCORS();
       console.log('CORS test response:', response);
       setResult(JSON.stringify(response, null, 2));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('CORS Test Error:', err);
       // Get more detailed error information
-      let errorMessage = err.message || 'An error occurred';
-      if (err.cause) {
+      let errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      if (err instanceof Error && err.cause) {
         errorMessage += '\n\nCause: ' + JSON.stringify(err.cause);
       }
       setError(errorMessage);
@@ -61,10 +61,10 @@ export default function CORSTestPage() {
         <h2 className="text-xl font-semibold mb-2">Instructions:</h2>
         <ol className="list-decimal list-inside">
           <li>Make sure your backend server is running at http://localhost:5000</li>
-          <li>Click the "Test CORS" button above</li>
-          <li>If successful, you'll see a green box with the response</li>
-          <li>If there's a CORS error, you'll see a red box with the error message</li>
-          <li>Check your browser's console for more detailed error information</li>
+          <li>Click the &quot;Test CORS&quot; button above</li>
+          <li>If successful, you&#39;ll see a green box with the response</li>
+          <li>If there&#39;s a CORS error, you&#39;ll see a red box with the error message</li>
+          <li>Check your browser&#39;s console for more detailed error information</li>
         </ol>
       </div>
     </div>

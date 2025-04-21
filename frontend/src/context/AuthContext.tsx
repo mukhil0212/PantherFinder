@@ -11,7 +11,7 @@ interface User {
   name: string;
   phone_number?: string;
   role?: string;
-  profile?: any;
+  profile?: object;
 }
 
 interface AuthContextType {
@@ -19,12 +19,12 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   isAuthenticated: boolean;
-  register: (userData: RegisterData) => Promise<any>;
-  login: (credentials: LoginCredentials) => Promise<any>;
+  register: (userData: RegisterData) => Promise<unknown>;
+  login: (credentials: LoginCredentials) => Promise<unknown>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
-  updateProfile: (userData: ProfileData) => Promise<any>;
-  changePassword: (passwordData: PasswordData) => Promise<any>;
+  updateProfile: (userData: ProfileData) => Promise<unknown>;
+  changePassword: (passwordData: PasswordData) => Promise<unknown>;
   setError: (error: string | null) => void;
 }
 
@@ -47,7 +47,7 @@ interface LoginCredentials {
 interface ProfileData {
   name?: string;
   phone_number?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface PasswordData {
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const userData = session.user;
 
         // Create a user object from Supabase data
-        const userObject = {
+        const userObject: User = {
           id: userData.id,
           email: userData.email || '',
           name: userData.user_metadata?.name || '',
@@ -106,8 +106,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         // Set the user immediately with Supabase data
         setUser(userObject);
-      } catch (err) {
-        console.error('Error checking auth:', err);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.error('Error checking auth:', err.message);
+        } else {
+          console.error('Error checking auth:', 'An unknown error occurred');
+        }
       } finally {
         setLoading(false);
       }
@@ -135,7 +139,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           }
 
           // Create a user object from Supabase data
-          const userObject = {
+          const userObject: User = {
             id: userData.id,
             email: userData.email || '',
             name: userData.user_metadata?.name || '',
@@ -175,8 +179,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Also call backend logout if needed
       try {
         await api.logout();
-      } catch (apiErr) {
-        console.error('Backend logout error (non-critical):', apiErr);
+      } catch (apiErr: unknown) {
+        if (apiErr instanceof Error) {
+          console.error('Backend logout error (non-critical):', apiErr.message);
+        } else {
+          console.error('Backend logout error (non-critical):', 'An unknown error occurred');
+        }
       }
 
       // Clear auth token from localStorage
@@ -187,9 +195,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       setUser(null);
       router.push('/');
-    } catch (err) {
-      console.error('Error logging out:', err);
-      setError('Failed to log out. Please try again.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -212,7 +223,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const userData = session.user;
 
       // Create a user object from Supabase data
-      const userObject = {
+      const userObject: User = {
         id: userData.id,
         email: userData.email || '',
         name: userData.user_metadata?.name || '',
@@ -227,9 +238,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (session.access_token) {
         localStorage.setItem('authToken', session.access_token);
       }
-    } catch (err: any) {
-      console.error('Error loading user profile:', err);
-      setError('Failed to load user profile.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -274,8 +288,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       return { user: data.user, session: data.session };
-    } catch (err: any) {
-      setError(err.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
       throw err;
     } finally {
       setLoading(false);
@@ -314,8 +332,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setUser(backendResponse.user);
           return backendResponse;
         }
-      } catch (backendErr) {
-        console.error('Backend login error (continuing with Supabase user):', backendErr);
+      } catch (backendErr: unknown) {
+        if (backendErr instanceof Error) {
+          console.error('Backend login error (continuing with Supabase user):', backendErr.message);
+        } else {
+          console.error('Backend login error (continuing with Supabase user):', 'An unknown error occurred');
+        }
       }
 
       // If backend login fails, use Supabase user data
@@ -328,8 +350,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       return { user: data.user, session: data.session };
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
       throw err;
     } finally {
       setLoading(false);
@@ -360,16 +386,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // Update local user state with backend data
         setUser(prev => prev ? { ...prev, ...updatedProfile } : null);
         return updatedProfile;
-      } catch (backendErr) {
-        console.error('Backend profile update error:', backendErr);
+      } catch (backendErr: unknown) {
+        if (backendErr instanceof Error) {
+          console.error('Backend profile update error:', backendErr.message);
+        } else {
+          console.error('Backend profile update error:', 'An unknown error occurred');
+        }
 
         // If backend update fails, update local state with provided data
         setUser(prev => prev ? { ...prev, ...userData } : null);
       }
 
       return userData;
-    } catch (err: any) {
-      setError(err.message || 'Failed to update profile. Please try again.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
       throw err;
     } finally {
       setLoading(false);
@@ -393,13 +427,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         const response = await api.changePassword(passwordData);
         return response;
-      } catch (backendErr) {
-        console.error('Backend password change error (non-critical):', backendErr);
+      } catch (backendErr: unknown) {
+        if (backendErr instanceof Error) {
+          console.error('Backend password change error (non-critical):', backendErr.message);
+        } else {
+          console.error('Backend password change error (non-critical):', 'An unknown error occurred');
+        }
       }
 
       return { message: 'Password changed successfully' };
-    } catch (err: any) {
-      setError(err.message || 'Failed to change password. Please try again.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
       throw err;
     } finally {
       setLoading(false);

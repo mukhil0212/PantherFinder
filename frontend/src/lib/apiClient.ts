@@ -109,7 +109,7 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 
     // Handle HTTP errors
     if (!response.ok) {
-      let errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
+      const errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
       console.error('API error response status:', response.status);
       throw new Error(errorMessage);
     }
@@ -120,8 +120,8 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 }
 
 // Items API
-const getItems = async (filters = {}) => {
-  const queryParams = new URLSearchParams(filters as Record<string, string>).toString();
+const getItems = async (filters: Record<string, string> = {}) => {
+  const queryParams = new URLSearchParams(filters).toString();
   return fetchAPI(`/items?${queryParams}`);
 };
 
@@ -129,7 +129,7 @@ const getItemById = async (id: string) => {
   return fetchAPI(`/items/${id}`);
 };
 
-const createItem = async (itemData: any) => {
+const createItem = async (itemData: unknown) => {
   return fetchAPI('/items', {
     method: 'POST',
     body: JSON.stringify(itemData),
@@ -206,7 +206,7 @@ const submitItem = async (formData: FormData, itemType: 'found' | 'lost' = 'foun
   }
 };
 
-const updateItem = async (id: string, itemData: any) => {
+const updateItem = async (id: string, itemData: unknown) => {
   return fetchAPI(`/items/${id}`, {
     method: 'PUT',
     body: JSON.stringify(itemData),
@@ -228,14 +228,14 @@ const getClaimById = async (id: string) => {
   return fetchAPI(`/claims/${id}`);
 };
 
-const createClaim = async (claimData: any) => {
+const createClaim = async (claimData: unknown) => {
   return fetchAPI('/claims', {
     method: 'POST',
     body: JSON.stringify(claimData),
   });
 };
 
-const updateClaim = async (id: string, claimData: any) => {
+const updateClaim = async (id: string, claimData: unknown) => {
   return fetchAPI(`/claims/${id}`, {
     method: 'PUT',
     body: JSON.stringify(claimData),
@@ -273,7 +273,7 @@ const login = async (credentials: { email: string; password: string }) => {
   });
 };
 
-const register = async (userData: any) => {
+const register = async (userData: unknown) => {
   return fetchAPI('/auth/register', {
     method: 'POST',
     body: JSON.stringify(userData),
@@ -295,7 +295,7 @@ const getProfile = async () => {
   return fetchAPI('/users/profile');
 };
 
-const updateProfile = async (profileData: any) => {
+const updateProfile = async (profileData: unknown) => {
   return fetchAPI('/users/profile', {
     method: 'PUT',
     body: JSON.stringify(profileData),

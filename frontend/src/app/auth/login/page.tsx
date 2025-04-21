@@ -30,9 +30,30 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-      router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Failed to login. Please check your credentials.');
+
+      // Check if there's a redirect URL in the query parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectUrl = urlParams.get('redirect');
+
+      if (redirectUrl) {
+        // Redirect to the original destination
+        router.push(redirectUrl);
+      } else {
+        // Magnify effect before redirect
+        if (typeof window !== 'undefined') {
+          const x = window.innerWidth / 2;
+          const y = window.innerHeight / 2;
+          trigger({ x, y, onComplete: () => router.push('/dashboard') });
+        } else {
+          router.push('/dashboard');
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Failed to login. Please check your credentials.');
+      } else {
+        setError('Failed to login. Please check your credentials.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +66,7 @@ export default function LoginPage() {
 
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
-          {error}
+          {error && typeof error === 'string' ? error.replace(/'/g, "&apos;").replace(/"/g, "&quot;") : error}
         </div>
       )}
 

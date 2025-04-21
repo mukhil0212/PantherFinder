@@ -10,8 +10,8 @@ import { MagicCard } from '@/components/ui/magic-card';
 export default function DashboardPage() {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  // Fix type for notifications to ensure 'name' property exists
+  const [notifications, setNotifications] = useState<{ name: string; [key: string]: unknown }[]>([]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -24,7 +24,6 @@ export default function DashboardPage() {
     if (isAuthenticated) {
       const fetchNotifications = async () => {
         try {
-          setNotificationsLoading(true);
           const response = await api.getNotifications();
           // Filter to only unread notifications
           const unreadNotifications = Array.isArray(response)
@@ -33,8 +32,6 @@ export default function DashboardPage() {
           setNotifications(unreadNotifications);
         } catch (err) {
           console.error('Error fetching notifications:', err);
-        } finally {
-          setNotificationsLoading(false);
         }
       };
 
@@ -59,7 +56,7 @@ export default function DashboardPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="mt-2">
-          Welcome back, {user?.name || user?.profile?.name || 'User'}!
+          Welcome back, {typeof user?.name === 'string' && user?.name ? user.name : (typeof user?.profile === 'object' && user?.profile && 'name' in user.profile && typeof user.profile.name === 'string' ? user.profile.name : 'User')}!
         </p>
       </div>
 
@@ -162,14 +159,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-// Helper function to format image URL (for consistency with other pages)
-const formatImageUrl = (imageUrl?: string) => {
-  if (!imageUrl) return null;
-
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-  return imageUrl.startsWith('http') ? imageUrl : `${API_BASE_URL}${imageUrl}`;
-};
 
 function DashboardCard({ title, description, icon, href }: {
   title: string;

@@ -137,7 +137,7 @@ export default function Home() {
                 <h2 className="text-3xl font-bold text-[var(--foreground)]">
                   Ready to Get Started?
                 </h2>
-                <p className="mt-4 text-xl muted">
+                <p className="mt-4 max-w-2xl mx-auto text-xl text-[var(--foreground)]/70">
                   Join our community to help reunite lost items with their owners.
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">

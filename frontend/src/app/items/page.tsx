@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import * as api from '../../lib/apiClient';
 import { ItemCard } from '@/components/ui/card';
-
 
 interface Item {
   id: string;
@@ -44,10 +42,18 @@ export default function ItemsListPage() {
       try {
         setLoading(true);
         const response = await api.getItems();
-        setItems(response.items || []);
-      } catch (err: any) {
+        if (response && response.items) {
+          setItems(response.items);
+        } else {
+          throw new Error('Failed to load items');
+        }
+      } catch (err: unknown) {
         console.error('Error fetching items:', err);
-        setError(err.message || 'Failed to load items');
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('Failed to load items');
+        }
       } finally {
         setLoading(false);
       }

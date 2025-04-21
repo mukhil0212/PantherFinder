@@ -49,7 +49,7 @@ export const MenuItem = ({
     <div
       ref={itemRef}
       onMouseEnter={handleMouseEnter}
-      onClick={() => setActive(active === item ? null : item)} // Toggle on click
+      onClick={() => setActive(active === item ? "" : item)} // Toggle on click
       className="relative group"
     >
       <motion.p
@@ -97,26 +97,9 @@ export const Menu = ({
   setActive,
   children,
 }: {
-  setActive: (item: string | null) => void;
+  setActive: (item: string) => void;
   children: React.ReactNode;
 }) => {
-  // Add a click handler to the document to close the menu when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      // Check if the click is outside the menu
-      if (!target.closest('nav')) {
-        setActive(null);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [setActive]);
-
   // Use a ref to track if the mouse is over the menu
   const menuRef = React.useRef<HTMLElement>(null);
 
@@ -125,7 +108,7 @@ export const Menu = ({
     // Small delay to prevent accidental leave
     const timer = setTimeout(() => {
       if (!menuRef.current?.matches(':hover')) {
-        setActive(null);
+        setActive("");
       }
     }, 100);
 
@@ -136,7 +119,7 @@ export const Menu = ({
     <nav
       ref={menuRef}
       onMouseLeave={handleMouseLeave}
-      className="relative rounded-full border border-transparent dark:bg-[var(--background)]/80 bg-[var(--background)]/90 shadow-lg flex items-center justify-between px-10 py-4 backdrop-blur-lg transition-all duration-200"
+      className="relative rounded-full border border-transparent dark:bg-[var(--background)]/80 bg-[var(--background)]/90 shadow-lg flex items-center justify-between px-14 py-6 backdrop-blur-lg transition-all duration-200"
     >
       {children}
     </nav>

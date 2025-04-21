@@ -15,7 +15,7 @@ export default function RegisterPage() {
     confirmPassword: '',
     phone_number: '',
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     console.log('Form submitted');
 
     // Validate passwords match
@@ -67,9 +67,9 @@ export default function RegisterPage() {
       } else {
         router.push('/dashboard');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Registration error:', err);
-      setError(err.message || 'Failed to register. Please try again.');
+      setError(String(err));
     } finally {
       setIsLoading(false);
     }

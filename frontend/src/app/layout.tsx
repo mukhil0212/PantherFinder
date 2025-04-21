@@ -33,7 +33,7 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="light">
           <AuthProvider>
             <MagnifyTransitionProvider>
-              <div className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)]">
+              <div className="min-h-screen flex flex-col">
                 <ThemeScript />
                 <NavbarDemo />
                 <main className="flex-grow pt-20 bg-[var(--background)] text-[var(--foreground)]">
