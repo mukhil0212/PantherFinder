@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
 import BackgroundBeamsDemo from '@/components/background-beams-demo';
-import NavbarDemo from '@/components/navbar-menu-demo';
+
 import { ItemCard } from '@/components/ui/card';
 import { BackgroundBeams } from '@/components/ui/background-beams';
 
@@ -44,8 +44,6 @@ export default function Home() {
   return (
     <div className="w-full min-h-screen relative">
       <div className="relative z-10">
-        <NavbarDemo />
-
         {/* Hero Section */}
         <BackgroundBeamsDemo />
 

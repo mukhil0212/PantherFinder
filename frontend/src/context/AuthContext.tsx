@@ -98,6 +98,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // Store the token for future use
         if (session.access_token) {
           localStorage.setItem('authToken', session.access_token);
+          console.log('Auth token stored in localStorage');
+
+          // Also set it as a cookie for better cross-tab support
+          document.cookie = `authToken=${session.access_token}; path=/; max-age=3600; SameSite=Lax`;
         }
 
         // Set the user immediately with Supabase data
@@ -120,6 +124,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (session) {
           // User logged in or token refreshed
           const userData = session.user;
+
+          // Store the refreshed token
+          if (session.access_token) {
+            localStorage.setItem('authToken', session.access_token);
+            console.log('Auth token refreshed in localStorage');
+
+            // Also update the cookie
+            document.cookie = `authToken=${session.access_token}; path=/; max-age=3600; SameSite=Lax`;
+          }
 
           // Create a user object from Supabase data
           const userObject = {
@@ -165,6 +178,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } catch (apiErr) {
         console.error('Backend logout error (non-critical):', apiErr);
       }
+
+      // Clear auth token from localStorage
+      localStorage.removeItem('authToken');
+
+      // Clear auth token cookie
+      document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
 
       setUser(null);
       router.push('/');

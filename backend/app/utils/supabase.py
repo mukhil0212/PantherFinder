@@ -11,58 +11,19 @@ supabase_url = os.environ.get('SUPABASE_URL')
 supabase_key = os.environ.get('SUPABASE_KEY')
 
 # Initialize Supabase client
-supabase: Client = None
+if not supabase_url or not supabase_key:
+    raise ValueError("Supabase credentials not found in environment variables. Make sure SUPABASE_URL and SUPABASE_KEY are set.")
 
-if supabase_url and supabase_key:
-    try:
-        supabase = create_client(supabase_url, supabase_key)
-        print("Supabase client initialized successfully")
-    except Exception as e:
-        print(f"Error initializing Supabase client: {e}")
-        # Fall back to mock client if there's an error
-        supabase = None
-else:
-    print("Supabase credentials not found in environment variables")
-    supabase = None
+print(f"Initializing Supabase client with URL: {supabase_url[:20]}...")
+print(f"Supabase key length: {len(supabase_key)}")
+supabase = create_client(supabase_url, supabase_key)
+print("Supabase client initialized successfully")
 
-# Mock Supabase client for local development or if real client fails
-class MockSupabaseClient:
-    def __init__(self):
-        self.tables = {}
-        print("Using Mock Supabase Client")
+# Test the connection
+test_result = supabase.table('items').select('id').limit(1).execute()
+print(f"Supabase connection test result: {test_result}")
 
-    def table(self, table_name):
-        if table_name not in self.tables:
-            self.tables[table_name] = MockTable(table_name)
-        return self.tables[table_name]
-
-class MockTable:
-    def __init__(self, name):
-        self.name = name
-        self.data = []
-        self.conditions = []
-
-    def select(self, columns):
-        return self
-
-    def insert(self, data):
-        return self
-
-    def update(self, data):
-        return self
-
-    def delete(self):
-        return self
-
-    def eq(self, column, value):
-        return self
-
-    def execute(self):
-        return {'data': []}
-
-# Use mock client if real client initialization failed
-if supabase is None:
-    supabase = MockSupabaseClient()
+# No mock client - we're using the real Supabase client for all operations
 
 def get_supabase_client():
     """Returns the Supabase client instance"""

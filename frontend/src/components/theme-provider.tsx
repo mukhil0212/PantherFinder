@@ -38,8 +38,13 @@ export function ThemeProvider({
   }, []);
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    if (!mounted) return;
 
+    const root = window.document.documentElement;
+    console.log("[ThemeProvider] Current classList:", [...root.classList]);
+    console.log("[ThemeProvider] Setting theme to:", theme);
+
+    // First remove both themes
     root.classList.remove("light", "dark");
 
     if (theme === "system") {
@@ -48,13 +53,21 @@ export function ThemeProvider({
         : "light";
 
       root.classList.add(systemTheme);
-      console.log("[ThemeProvider] System theme detected:", systemTheme);
+      console.log("[ThemeProvider] System theme applied:", systemTheme);
+
+      // Also store the resolved theme for components that need to know the actual theme
+      localStorage.setItem("resolved-theme", systemTheme);
       return;
     }
 
+    // Apply the selected theme
     root.classList.add(theme);
-    console.log("[ThemeProvider] Theme set:", theme);
-  }, [theme]);
+
+    // Store the resolved theme
+    localStorage.setItem("resolved-theme", theme);
+
+    console.log("[ThemeProvider] Theme applied:", theme, "Current classList:", [...root.classList]);
+  }, [theme, mounted]);
 
   const value = {
     theme,

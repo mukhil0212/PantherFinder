@@ -4,18 +4,29 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import * as api from '../../lib/apiClient';
 import { ItemCard } from '@/components/ui/card';
-import NavbarDemo from '@/components/navbar-menu-demo';
+
 
 interface Item {
   id: string;
   name: string;
   category: string;
-  location: string;
-  date_found: string;
+  found_location: string;
+  found_date: string;
+  date_lost?: string;
   status: string;
   image_url?: string;
   description?: string;
+  contact_email?: string;
+  contact_phone?: string;
 }
+
+// Helper function to format image URL
+const formatImageUrl = (imageUrl?: string) => {
+  if (!imageUrl) return null;
+
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  return imageUrl.startsWith('http') ? imageUrl : `${API_BASE_URL}${imageUrl}`;
+};
 
 export default function ItemsListPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -25,6 +36,7 @@ export default function ItemsListPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   // Fetch items from API
   useEffect(() => {
@@ -46,33 +58,37 @@ export default function ItemsListPage() {
 
   // Get unique categories and locations for filters
   const categories = [...new Set(items.map(item => item.category))];
-  const locations = [...new Set(items.map(item => item.location))];
+  const locations = [...new Set(items.map(item => item.found_location).filter(Boolean))];
 
   // Filter items based on search and filters
   const filteredItems = items.filter(item => {
     const matchesSearch = searchTerm === '' ||
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.found_location && item.found_location.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesCategory = categoryFilter === '' || item.category === categoryFilter;
-    const matchesLocation = locationFilter === '' || item.location === locationFilter;
-    const matchesDate = dateFilter === '' ||
-      (item.date_found && item.date_found.substring(0, 10) === dateFilter);
+    const matchesLocation = locationFilter === '' || item.found_location === locationFilter;
 
-    return matchesSearch && matchesCategory && matchesLocation && matchesDate;
+    // Handle date filtering for both lost and found items
+    const matchesDate = dateFilter === '' ||
+      (item.status === 'found' && item.found_date && item.found_date.substring(0, 10) === dateFilter) ||
+      (item.status === 'lost' && item.date_lost && item.date_lost.substring(0, 10) === dateFilter);
+
+    // Filter by status (lost or found)
+    const matchesStatus = statusFilter === '' || item.status.toLowerCase() === statusFilter.toLowerCase();
+
+    return matchesSearch && matchesCategory && matchesLocation && matchesDate && matchesStatus;
   });
 
   return (
     <div className="w-full">
-      <NavbarDemo />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Lost & Found Items</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300">
-          Browse through items that have been found on campus.
+          Browse through items that have been lost or found on campus. Use the filters below to narrow your search.
         </p>
       </div>
 
@@ -92,7 +108,7 @@ export default function ItemsListPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Category
@@ -128,8 +144,24 @@ export default function ItemsListPage() {
           </div>
 
           <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Status
+            </label>
+            <select
+              id="status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">All Items</option>
+              <option value="found">Found Items</option>
+              <option value="lost">Lost Items</option>
+            </select>
+          </div>
+
+          <div>
             <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Date Found
+              Date
             </label>
             <input
               type="date"
@@ -162,10 +194,11 @@ export default function ItemsListPage() {
                 title={item.name}
                 description={item.description || "No description available"}
                 category={item.category}
-                location={item.location}
-                date={item.date_found}
+                location={item.found_location}
+                date={item.found_date}
+                dateLost={item.date_lost}
                 status={item.status.toLowerCase()}
-                imageUrl={item.image_url}
+                imageUrl={item.image_url ? formatImageUrl(item.image_url) as string : undefined}
                 href={`/items/${item.id}`}
               />
             ))

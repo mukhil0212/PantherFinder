@@ -10,12 +10,23 @@ interface Item {
   id: string;
   name: string;
   category: string;
-  location: string;
-  date_found: string;
+  found_location: string;
+  found_date: string;
+  date_lost?: string;
   description: string;
   status: string;
   image_url?: string;
+  contact_email?: string;
+  contact_phone?: string;
 }
+
+// Helper function to format image URL
+const formatImageUrl = (imageUrl?: string) => {
+  if (!imageUrl) return null;
+
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  return imageUrl.startsWith('http') ? imageUrl : `${API_BASE_URL}${imageUrl}`;
+};
 
 export default function MyItemsPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -34,10 +45,22 @@ export default function MyItemsPage() {
       try {
         setLoading(true);
         const response = await api.getUserItems();
-        setItems(response.items || []);
+        console.log('My items response:', response);
+
+        // Check if the response has an items property
+        if (response && response.items) {
+          setItems(response.items);
+        } else if (Array.isArray(response)) {
+          // Handle case where response is an array directly
+          setItems(response);
+        } else {
+          console.error('Unexpected response format:', response);
+          setItems([]);
+        }
       } catch (err: any) {
         console.error('Error fetching items:', err);
         setError(err.message || 'Failed to load items');
+        setItems([]);
       } finally {
         setLoading(false);
       }
@@ -93,7 +116,7 @@ export default function MyItemsPage() {
               {item.image_url && (
                 <div className="h-48 overflow-hidden">
                   <img
-                    src={item.image_url}
+                    src={formatImageUrl(item.image_url) || ''}
                     alt={item.name}
                     className="w-full h-full object-cover"
                   />
@@ -106,16 +129,24 @@ export default function MyItemsPage() {
                     <span className="font-medium">Category:</span> {item.category}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
-                    <span className="font-medium">Location:</span> {item.location}
+                    <span className="font-medium">Location:</span> {item.found_location}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    <span className="font-medium">Date Found:</span>{' '}
-                    {new Date(item.date_found).toLocaleDateString()}
-                  </p>
+                  {item.status === 'found' ? (
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      <span className="font-medium">Date Found:</span>{' '}
+                      {item.found_date && new Date(item.found_date).toLocaleDateString()}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      <span className="font-medium">Date Lost:</span>{' '}
+                      {item.date_lost && new Date(item.date_lost).toLocaleDateString()}
+                    </p>
+                  )}
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     <span className="font-medium">Status:</span>{' '}
                     <span className={`capitalize ${
                       item.status === 'found' ? 'text-green-600 dark:text-green-400' :
+                      item.status === 'lost' ? 'text-red-600 dark:text-red-400' :
                       item.status === 'claimed' ? 'text-blue-600 dark:text-blue-400' :
                       item.status === 'returned' ? 'text-purple-600 dark:text-purple-400' : ''
                     }`}>

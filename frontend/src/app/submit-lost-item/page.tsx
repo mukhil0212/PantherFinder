@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import * as api from '../../lib/apiClient';
 import Link from 'next/link';
 
-export default function SubmitItemPage() {
+export default function SubmitLostItemPage() {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
 
@@ -14,7 +14,7 @@ export default function SubmitItemPage() {
     name: '',
     category: '',
     location: '',
-    date_found: '',
+    date_lost: '',
     description: '',
     contact_email: '',
     contact_phone: '',
@@ -90,19 +90,19 @@ export default function SubmitItemPage() {
       }
 
       console.log('Form data keys before submission:', [...formDataObj.keys()]);
-
-      // Submit the item
-      console.log('Submitting item...');
-      const response = await api.submitItem(formDataObj);
+      
+      // Submit the lost item
+      console.log('Submitting lost item...');
+      const response = await api.submitItem(formDataObj, 'lost');
       console.log('Submit response:', response);
 
       // Success
-      setMessage({ type: 'success', text: 'Item submitted successfully!' });
+      setMessage({ type: 'success', text: 'Lost item reported successfully!' });
       setFormData({
         name: '',
         category: '',
         location: '',
-        date_found: '',
+        date_lost: '',
         description: '',
         contact_email: '',
         contact_phone: '',
@@ -114,8 +114,8 @@ export default function SubmitItemPage() {
         router.push('/dashboard');
       }, 2000);
     } catch (err: any) {
-      console.error('Error submitting item:', err);
-      setMessage({ type: 'error', text: err.message || 'Failed to submit item.' });
+      console.error('Error submitting lost item:', err);
+      setMessage({ type: 'error', text: err.message || 'Failed to submit lost item.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -136,12 +136,12 @@ export default function SubmitItemPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Submit Found Item</h1>
-        <Link
-          href="/submit-lost-item"
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Report Lost Item</h1>
+        <Link 
+          href="/submit-item" 
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Report Lost Item
+          Submit Found Item
         </Link>
       </div>
 
@@ -192,7 +192,7 @@ export default function SubmitItemPage() {
 
             <div>
               <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Location Found *
+                Last Seen Location *
               </label>
               <select
                 id="location"
@@ -210,14 +210,14 @@ export default function SubmitItemPage() {
             </div>
 
             <div>
-              <label htmlFor="date_found" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Date Found *
+              <label htmlFor="date_lost" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Date Lost *
               </label>
               <input
                 type="date"
-                id="date_found"
-                name="date_found"
-                value={formData.date_found}
+                id="date_lost"
+                name="date_lost"
+                value={formData.date_lost}
                 onChange={handleChange}
                 required
                 max={new Date().toISOString().split('T')[0]}
@@ -271,7 +271,7 @@ export default function SubmitItemPage() {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Images *
+                Images
               </label>
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md">
                 <div className="space-y-1 text-center">
@@ -303,7 +303,6 @@ export default function SubmitItemPage() {
                         accept="image/*"
                         onChange={handleImageChange}
                         className="sr-only"
-                        required={images.length === 0}
                       />
                     </label>
                     <p className="pl-1">or drag and drop</p>
@@ -347,7 +346,7 @@ export default function SubmitItemPage() {
               disabled={isSubmitting}
               className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Item'}
+              {isSubmitting ? 'Submitting...' : 'Report Lost Item'}
             </button>
           </div>
         </form>

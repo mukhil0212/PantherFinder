@@ -1,9 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app, g
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from app.models.user import User
-from app import db, supabase
-from app.utils.supabase import sign_up, sign_in, get_user, update_user
-from app.utils.supabase_auth import supabase_auth_required, get_current_user
+from app import supabase
+from app.utils.supabase import sign_up, sign_in, get_user, update_user, get_supabase_client
+from app.utils.supabase_auth import supabase_auth_required, supabase_auth_optional, get_current_user
 from datetime import timedelta
 from email_validator import validate_email, EmailNotValidError
 import traceback
@@ -40,19 +39,19 @@ def register():
 
         # Register user with Supabase Auth
         current_app.logger.info('Calling Supabase sign_up')
-        auth_response = sign_up(email, data['password'], user_metadata)
-        current_app.logger.info(f'Supabase sign_up response: {auth_response}')
-
-        if auth_response.error:
-            current_app.logger.error(f'Supabase auth error: {auth_response.error.message}')
-            return jsonify({'error': auth_response.error.message}), 400
+        try:
+            auth_response = sign_up(email, data['password'], user_metadata)
+            current_app.logger.info(f'Supabase sign_up response: {auth_response}')
+        except Exception as e:
+            current_app.logger.error(f'Supabase auth error: {str(e)}')
+            return jsonify({'error': str(e)}), 400
     except Exception as e:
         current_app.logger.error(f'Exception in register: {str(e)}')
         current_app.logger.error(traceback.format_exc())
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
     # Get the new user data
-    new_user = auth_response.data.user
+    new_user = auth_response.user
 
     # Create a profile record in the profiles table
     profile_data = {
@@ -100,13 +99,14 @@ def login():
         return jsonify({'error': 'Missing email or password'}), 400
 
     # Sign in with Supabase Auth
-    auth_response = sign_in(data['email'], data['password'])
+    try:
+        auth_response = sign_in(data['email'], data['password'])
 
-    if auth_response.error:
+        # Get user data
+        user = auth_response.user
+    except Exception as e:
+        current_app.logger.error(f"Login error: {str(e)}")
         return jsonify({'error': 'Invalid email or password'}), 401
-
-    # Get user data
-    user = auth_response.data.user
 
     # Get profile data from profiles table
     profile_response = supabase.table('profiles').select('*').eq('id', user.id).execute()
@@ -172,12 +172,12 @@ def get_current_user_info():
             return jsonify({'error': 'Invalid or expired token'}), 401
 
     # Get user data from Supabase Auth
-    auth_response = get_user(user_id)
-
-    if auth_response.error:
+    try:
+        auth_response = get_user(user_id)
+        user = auth_response.user
+    except Exception as e:
+        current_app.logger.error(f"Error getting user data: {str(e)}")
         return jsonify({'error': 'User not found'}), 404
-
-    user = auth_response.data
 
     # Get profile data from profiles table
     profile_response = supabase.table('profiles').select('*').eq('id', user_id).execute()
@@ -231,12 +231,12 @@ def get_profile():
             return jsonify({'error': 'Invalid or expired token'}), 401
 
     # Get user data from Supabase Auth
-    auth_response = get_user(user_id)
-
-    if auth_response.error:
+    try:
+        auth_response = get_user(user_id)
+        user = auth_response.user
+    except Exception as e:
+        current_app.logger.error(f"Error getting user data: {str(e)}")
         return jsonify({'error': 'User not found'}), 404
-
-    user = auth_response.data
 
     # Get profile data from profiles table
     profile_response = supabase.table('profiles').select('*').eq('id', user_id).execute()
@@ -295,18 +295,20 @@ def change_password():
         return jsonify({'error': 'Missing required fields'}), 400
 
     # First verify the current password by attempting to sign in
-    auth_response = sign_in(data.get('email', ''), data['current_password'])
-
-    if auth_response.error:
+    try:
+        auth_response = sign_in(data.get('email', ''), data['current_password'])
+    except Exception as e:
+        current_app.logger.error(f"Password verification error: {str(e)}")
         return jsonify({'error': 'Current password is incorrect'}), 401
 
     # Update password in Supabase Auth
-    update_response = supabase.auth.admin.update_user_by_id(
-        user_id,
-        {'password': data['new_password']}
-    )
-
-    if update_response.error:
+    try:
+        update_response = supabase.auth.admin.update_user_by_id(
+            user_id,
+            {'password': data['new_password']}
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error updating password: {str(e)}")
         return jsonify({'error': 'Failed to update password'}), 500
 
     return jsonify({'message': 'Password changed successfully'}), 200

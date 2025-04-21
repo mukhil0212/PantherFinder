@@ -94,7 +94,7 @@ SUPABASE_KEY=your_supabase_service_key
 FLASK_DEBUG=1 python run.py
 ```
 
-The backend API will be available at http://localhost:5000
+The backend API will be available at http://localhost:5001
 
 ## Project Structure
 

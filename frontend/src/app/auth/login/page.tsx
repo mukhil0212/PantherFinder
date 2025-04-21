@@ -27,7 +27,18 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-      router.push('/dashboard');
+
+      // Check if there's a redirect URL in the query parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectUrl = urlParams.get('redirect');
+
+      if (redirectUrl) {
+        // Redirect to the original destination
+        router.push(redirectUrl);
+      } else {
+        // Default redirect to items page
+        router.push('/items');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to login. Please check your credentials.');
     } finally {

@@ -1,8 +1,12 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app, g
 from flask_jwt_extended import jwt_required, get_jwt
 from app.models.drop_off_location import DropOffLocation
-from app import db
+from app.utils.supabase import get_supabase_client
+from app.utils.supabase_auth import supabase_auth_required, supabase_auth_optional
 from geopy.distance import geodesic
+from datetime import datetime
+
+supabase = get_supabase_client()
 
 locations_bp = Blueprint('locations', __name__)
 
@@ -11,105 +15,168 @@ def is_admin():
     jwt_data = get_jwt()
     return jwt_data.get('role') == 'admin'
 
-@locations_bp.route('/', methods=['GET'])
+@locations_bp.route('', methods=['GET'])
+@supabase_auth_optional
 def get_locations():
-    # Get paginated results
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    
-    locations = DropOffLocation.query.paginate(page=page, per_page=per_page)
-    
-    return jsonify({
-        'locations': [location.to_dict() for location in locations.items],
-        'total': locations.total,
-        'pages': locations.pages,
-        'current_page': page
-    }), 200
+    try:
+        # Get paginated results
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # Calculate start and end for pagination
+        start = (page - 1) * per_page
+        end = start + per_page - 1
+        
+        # Query locations from Supabase
+        result = supabase.table('drop_off_locations').select('*').range(start, end).execute()
+        
+        # Get total count
+        count_result = supabase.table('drop_off_locations').select('id', count='exact').execute()
+        total_count = count_result.count if hasattr(count_result, 'count') else len(result.data)
+        
+        # Calculate total pages
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
+        
+        return jsonify({
+            'locations': result.data,
+            'total': total_count,
+            'pages': total_pages,
+            'current_page': page
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching locations: {str(e)}")
+        return jsonify({'error': f"Failed to fetch locations: {str(e)}"}), 500
 
-@locations_bp.route('/<int:location_id>', methods=['GET'])
+@locations_bp.route('/<location_id>', methods=['GET'])
+@supabase_auth_optional
 def get_location(location_id):
-    location = DropOffLocation.query.get_or_404(location_id)
-    return jsonify(location.to_dict()), 200
+    try:
+        # Get location from Supabase
+        result = supabase.table('drop_off_locations').select('*').eq('id', location_id).execute()
+        
+        if not result.data or len(result.data) == 0:
+            return jsonify({'error': 'Location not found'}), 404
+            
+        location = result.data[0]
+        return jsonify(location), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching location {location_id}: {str(e)}")
+        return jsonify({'error': f"Failed to fetch location: {str(e)}"}), 500
 
-@locations_bp.route('/', methods=['POST'])
-@jwt_required()
+@locations_bp.route('', methods=['POST'])
+@supabase_auth_required
 def create_location():
-    # Only admins can create locations
-    if not is_admin():
-        return jsonify({'error': 'Unauthorized access'}), 403
+    try:
+        # Check if user is admin
+        user = g.user
+        if user.get('role') != 'admin':
+            return jsonify({'error': 'Unauthorized access'}), 403
+            
+        data = request.get_json()
+        
+        # Validate required fields
+        if not all(k in data for k in ('name', 'address')):
+            return jsonify({'error': 'Missing required fields'}), 400
+            
+        # Create location data
+        location_data = {
+            'name': data['name'],
+            'address': data['address'],
+            'contact_person': data.get('contact_person', ''),
+            'phone_number': data.get('phone_number', ''),
+            'latitude': data.get('latitude'),
+            'longitude': data.get('longitude'),
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        
+        # Insert into Supabase
+        result = supabase.table('drop_off_locations').insert(location_data).execute()
+        
+        if not result.data or len(result.data) == 0:
+            return jsonify({'error': 'Failed to create location'}), 500
     
-    data = request.get_json()
-    
-    # Validate required fields
-    if not all(k in data for k in ('name', 'address')):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    # Create new location
-    location = DropOffLocation(
-        name=data['name'],
-        address=data['address'],
-        contact_person=data.get('contact_person'),
-        phone_number=data.get('phone_number'),
-        latitude=data.get('latitude'),
-        longitude=data.get('longitude')
-    )
-    
-    db.session.add(location)
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Location created successfully',
-        'location': location.to_dict()
-    }), 201
+        return jsonify({
+            'message': 'Location created successfully',
+            'location': result.data[0]
+        }), 201
+    except Exception as e:
+        current_app.logger.error(f"Error creating location: {str(e)}")
+        return jsonify({'error': f"Failed to create location: {str(e)}"}), 500
 
-@locations_bp.route('/<int:location_id>', methods=['PUT'])
-@jwt_required()
+@locations_bp.route('/<location_id>', methods=['PUT'])
+@supabase_auth_required
 def update_location(location_id):
-    # Only admins can update locations
-    if not is_admin():
-        return jsonify({'error': 'Unauthorized access'}), 403
+    try:
+        # Check if user is admin
+        user = g.user
+        if user.get('role') != 'admin':
+            return jsonify({'error': 'Unauthorized access'}), 403
+            
+        # Check if location exists
+        check_result = supabase.table('drop_off_locations').select('*').eq('id', location_id).execute()
+        
+        if not check_result.data or len(check_result.data) == 0:
+            return jsonify({'error': 'Location not found'}), 404
+            
+        data = request.get_json()
+        
+        # Prepare update data
+        update_data = {}
+        for field in ['name', 'address', 'contact_person', 'phone_number', 'latitude', 'longitude']:
+            if field in data:
+                update_data[field] = data[field]
+                
+        update_data['updated_at'] = datetime.utcnow().isoformat()
+        
+        if not update_data:
+            return jsonify({'error': 'No valid fields to update'}), 400
+            
+        # Update in Supabase
+        result = supabase.table('drop_off_locations').update(update_data).eq('id', location_id).execute()
+        
+        if not result.data or len(result.data) == 0:
+            return jsonify({'error': 'Failed to update location'}), 500
     
-    location = DropOffLocation.query.get_or_404(location_id)
-    data = request.get_json()
-    
-    # Update fields if provided
-    if 'name' in data:
-        location.name = data['name']
-    if 'address' in data:
-        location.address = data['address']
-    if 'contact_person' in data:
-        location.contact_person = data['contact_person']
-    if 'phone_number' in data:
-        location.phone_number = data['phone_number']
-    if 'latitude' in data:
-        location.latitude = data['latitude']
-    if 'longitude' in data:
-        location.longitude = data['longitude']
-    
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Location updated successfully',
-        'location': location.to_dict()
-    }), 200
+        return jsonify({
+            'message': 'Location updated successfully',
+            'location': result.data[0]
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error updating location {location_id}: {str(e)}")
+        return jsonify({'error': f"Failed to update location: {str(e)}"}), 500
 
-@locations_bp.route('/<int:location_id>', methods=['DELETE'])
-@jwt_required()
+@locations_bp.route('/<location_id>', methods=['DELETE'])
+@supabase_auth_required
 def delete_location(location_id):
-    # Only admins can delete locations
-    if not is_admin():
-        return jsonify({'error': 'Unauthorized access'}), 403
-    
-    location = DropOffLocation.query.get_or_404(location_id)
-    
-    # Check if location has associated items
-    if location.items.count() > 0:
-        return jsonify({'error': 'Cannot delete location with associated items'}), 400
-    
-    db.session.delete(location)
-    db.session.commit()
-    
-    return jsonify({'message': 'Location deleted successfully'}), 200
+    try:
+        # Check if user is admin
+        user = g.user
+        if user.get('role') != 'admin':
+            return jsonify({'error': 'Unauthorized access'}), 403
+            
+        # Check if location exists
+        check_result = supabase.table('drop_off_locations').select('*').eq('id', location_id).execute()
+        
+        if not check_result.data or len(check_result.data) == 0:
+            return jsonify({'error': 'Location not found'}), 404
+            
+        # Check if location has items
+        items_result = supabase.table('items').select('id').eq('drop_off_location_id', location_id).execute()
+        
+        if items_result.data and len(items_result.data) > 0:
+            return jsonify({'error': 'Cannot delete location with associated items'}), 400
+            
+        # Delete from Supabase
+        result = supabase.table('drop_off_locations').delete().eq('id', location_id).execute()
+        
+        if not result.data:
+            return jsonify({'error': 'Failed to delete location'}), 500
+            
+        return jsonify({'message': 'Location deleted successfully'}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error deleting location {location_id}: {str(e)}")
+        return jsonify({'error': f"Failed to delete location: {str(e)}"}), 500
 
 @locations_bp.route('/nearest', methods=['GET'])
 def get_nearest_location():

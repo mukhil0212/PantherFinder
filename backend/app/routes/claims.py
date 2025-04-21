@@ -1,205 +1,335 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app, g
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from app.models.claim import Claim
-from app.models.item import Item
-from app.models.notification import Notification
-from app.models.user import User
-from app import db
 from datetime import datetime
+from app.utils.supabase import get_supabase_client
+from app.utils.supabase_auth import supabase_auth_required, supabase_auth_optional, get_current_user
 
 claims_bp = Blueprint('claims', __name__)
+supabase = get_supabase_client()
 
 # Helper function to check if user is admin
 def is_admin():
     jwt_data = get_jwt()
     return jwt_data.get('role') == 'admin'
 
-@claims_bp.route('/', methods=['GET'])
-@jwt_required()
+@claims_bp.route('', methods=['GET'])
+@supabase_auth_required
 def get_claims():
-    # Only admins can see all claims
-    if not is_admin():
-        return jsonify({'error': 'Unauthorized access'}), 403
-    
-    # Get query parameters for filtering
-    status = request.args.get('status')
-    
-    # Start with base query
-    query = Claim.query
-    
-    # Apply filters if provided
-    if status:
-        query = query.filter(Claim.verification_status == status)
-    
-    # Get paginated results
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    
-    claims = query.order_by(Claim.created_at.desc()).paginate(page=page, per_page=per_page)
-    
-    return jsonify({
-        'claims': [claim.to_dict() for claim in claims.items],
-        'total': claims.total,
-        'pages': claims.pages,
-        'current_page': page
-    }), 200
+    try:
+        # Get user from g object (set by supabase_auth_required)
+        user = g.user
+        user_id = user.get('id')
 
-@claims_bp.route('/<int:claim_id>', methods=['GET'])
-@jwt_required()
+        # Only admins can see all claims
+        if user.get('role') != 'admin':
+            # Regular users can only see their own claims
+            result = supabase.table('claims').select('*').eq('user_id', user_id).execute()
+
+            if not result.data:
+                return jsonify({'claims': [], 'total': 0, 'pages': 0, 'current_page': 1}), 200
+
+            return jsonify({
+                'claims': result.data,
+                'total': len(result.data),
+                'pages': 1,
+                'current_page': 1
+            }), 200
+
+        # Admins can see all claims with filtering
+        status = request.args.get('status')
+
+        # Start with base query
+        query = supabase.table('claims').select('*')
+
+        # Apply filters if provided
+        if status:
+            query = query.eq('verification_status', status)
+
+        # Apply pagination
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+
+        # Calculate start and end for pagination
+        start = (page - 1) * per_page
+        end = start + per_page - 1
+
+        # Add pagination to query
+        query = query.range(start, end)
+
+        # Execute query
+        result = query.execute()
+
+        # Get total count
+        count_result = supabase.table('claims').select('id', count='exact').execute()
+        total_count = count_result.count if hasattr(count_result, 'count') else len(result.data)
+
+        # Calculate total pages
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
+
+        claims = result.data
+
+        return jsonify({
+            'claims': claims,
+            'total': total_count,
+            'pages': total_pages,
+            'current_page': page
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching claims: {str(e)}")
+        return jsonify({'error': f"Failed to fetch claims: {str(e)}"}), 500
+
+@claims_bp.route('/<claim_id>', methods=['GET'])
+@supabase_auth_required
 def get_claim(claim_id):
-    user_id = get_jwt_identity()
-    claim = Claim.query.get_or_404(claim_id)
-    
-    # Users can only view their own claims unless they're admins
-    if claim.user_id != user_id and not is_admin():
-        return jsonify({'error': 'Unauthorized access'}), 403
-    
-    return jsonify(claim.to_dict()), 200
+    try:
+        # Get user from g object (set by supabase_auth_required)
+        user = g.user
+        user_id = user.get('id')
 
-@claims_bp.route('/', methods=['POST'])
-@jwt_required()
+        # Get claim from Supabase
+        result = supabase.table('claims').select('*').eq('id', claim_id).execute()
+
+        if not result.data or len(result.data) == 0:
+            return jsonify({'error': 'Claim not found'}), 404
+
+        claim = result.data[0]
+
+        # Users can only view their own claims unless they're admins
+        if claim.get('user_id') != user_id and user.get('role') != 'admin':
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        return jsonify(claim), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching claim {claim_id}: {str(e)}")
+        return jsonify({'error': f"Failed to fetch claim: {str(e)}"}), 500
+
+@claims_bp.route('', methods=['POST'])
+@supabase_auth_required
 def create_claim():
-    user_id = get_jwt_identity()
-    data = request.get_json()
-    
-    # Validate required fields
-    if 'item_id' not in data:
-        return jsonify({'error': 'Item ID is required'}), 400
-    
-    # Check if item exists
-    item = Item.query.get(data['item_id'])
-    if not item:
-        return jsonify({'error': 'Item not found'}), 404
-    
-    # Check if item is already claimed
-    if item.status == 'claimed' or item.status == 'returned':
-        return jsonify({'error': 'This item has already been claimed'}), 400
-    
-    # Check if user already has a pending claim for this item
-    existing_claim = Claim.query.filter_by(
-        item_id=data['item_id'],
-        user_id=user_id
-    ).first()
-    
-    if existing_claim:
-        return jsonify({'error': 'You already have a claim for this item'}), 400
-    
-    # Create new claim
-    claim = Claim(
-        item_id=data['item_id'],
-        user_id=user_id,
-        proof_description=data.get('proof_description', ''),
-        verification_status='pending'
-    )
-    
-    db.session.add(claim)
-    
-    # Create notification for admin
-    # Find admin users
-    admins = User.query.filter_by(role='admin').all()
-    for admin in admins:
-        notification = Notification(
-            user_id=admin.id,
-            item_id=item.id,
-            message=f"New claim submitted for item '{item.name}'",
-            notification_type='claim_update'
-        )
-        db.session.add(notification)
-    
-    # Create notification for the finder
-    if item.user_found_id:
-        notification = Notification(
-            user_id=item.user_found_id,
-            item_id=item.id,
-            message=f"Someone has claimed the item '{item.name}' that you found",
-            notification_type='claim_update'
-        )
-        db.session.add(notification)
-    
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Claim submitted successfully',
-        'claim': claim.to_dict()
-    }), 201
+    try:
+        # Get user from g object (set by supabase_auth_required)
+        user = g.user
+        user_id = user.get('id')
 
-@claims_bp.route('/<int:claim_id>', methods=['PUT'])
-@jwt_required()
+        data = request.get_json()
+
+        # Validate required fields
+        if 'item_id' not in data:
+            return jsonify({'error': 'Item ID is required'}), 400
+
+        # Check if item exists
+        item_result = supabase.table('items').select('*').eq('id', data['item_id']).execute()
+
+        if not item_result.data or len(item_result.data) == 0:
+            return jsonify({'error': 'Item not found'}), 404
+
+        item = item_result.data[0]
+
+        # Check if item is already claimed
+        if item.get('status') == 'claimed' or item.get('status') == 'returned':
+            return jsonify({'error': 'This item has already been claimed'}), 400
+
+        # Check if user already has a pending claim for this item
+        existing_claim_result = supabase.table('claims').select('*').eq('item_id', data['item_id']).eq('user_id', user_id).execute()
+
+        if existing_claim_result.data and len(existing_claim_result.data) > 0:
+            return jsonify({'error': 'You already have a claim for this item'}), 400
+
+        # Create new claim
+        claim_data = {
+            'item_id': data['item_id'],
+            'user_id': user_id,
+            'proof_description': data.get('proof_description', ''),
+            'verification_status': 'pending',
+            'claim_date': datetime.utcnow().isoformat(),
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }
+
+        # Insert into Supabase
+        claim_result = supabase.table('claims').insert(claim_data).execute()
+
+        if not claim_result.data or len(claim_result.data) == 0:
+            return jsonify({'error': 'Failed to create claim'}), 500
+
+        claim = claim_result.data[0]
+
+        # Create notification for admin
+        # Find admin users
+        admin_result = supabase.table('users').select('id').eq('role', 'admin').execute()
+
+        if admin_result.data and len(admin_result.data) > 0:
+            for admin in admin_result.data:
+                notification_data = {
+                    'user_id': admin.get('id'),
+                    'item_id': item.get('id'),
+                    'message': f"New claim submitted for item '{item.get('name')}'",
+                    'notification_type': 'claim_update',
+                    'created_at': datetime.utcnow().isoformat(),
+                    'read': False
+                }
+
+                supabase.table('notifications').insert(notification_data).execute()
+
+        # Create notification for the finder
+        if item.get('user_found_id'):
+            notification_data = {
+                'user_id': item.get('user_found_id'),
+                'item_id': item.get('id'),
+                'message': f"Someone has claimed the item '{item.get('name')}' that you found",
+                'notification_type': 'claim_update',
+                'created_at': datetime.utcnow().isoformat(),
+                'read': False
+            }
+
+            supabase.table('notifications').insert(notification_data).execute()
+
+        return jsonify({
+            'message': 'Claim submitted successfully',
+            'claim': claim
+        }), 201
+    except Exception as e:
+        current_app.logger.error(f"Error creating claim: {str(e)}")
+        return jsonify({'error': f"Failed to create claim: {str(e)}"}), 500
+
+@claims_bp.route('/<claim_id>', methods=['PUT'])
+@supabase_auth_required
 def update_claim(claim_id):
-    user_id = get_jwt_identity()
-    claim = Claim.query.get_or_404(claim_id)
-    data = request.get_json()
-    
-    # Regular users can only update their own claims' proof description
-    if claim.user_id == user_id and not is_admin():
-        if 'proof_description' in data:
-            claim.proof_description = data['proof_description']
-            db.session.commit()
+    try:
+        # Get user from g object (set by supabase_auth_required)
+        user = g.user
+        user_id = user.get('id')
+
+        # Get claim from Supabase
+        claim_result = supabase.table('claims').select('*').eq('id', claim_id).execute()
+
+        if not claim_result.data or len(claim_result.data) == 0:
+            return jsonify({'error': 'Claim not found'}), 404
+
+        claim = claim_result.data[0]
+
+        data = request.get_json()
+
+        # Regular users can only update their own claims' proof description
+        if claim.get('user_id') == user_id and user.get('role') != 'admin':
+            if 'proof_description' in data:
+                update_data = {
+                    'proof_description': data['proof_description'],
+                    'updated_at': datetime.utcnow().isoformat()
+                }
+
+                update_result = supabase.table('claims').update(update_data).eq('id', claim_id).execute()
+
+                if not update_result.data or len(update_result.data) == 0:
+                    return jsonify({'error': 'Failed to update claim'}), 500
+
+                return jsonify({
+                    'message': 'Claim updated successfully',
+                    'claim': update_result.data[0]
+                }), 200
+            else:
+                return jsonify({'error': 'Unauthorized to update these fields'}), 403
+
+        # Admins can update verification status and notes
+        if user.get('role') == 'admin':
+            update_data = {
+                'updated_at': datetime.utcnow().isoformat()
+            }
+
+            if 'verification_status' in data:
+                old_status = claim.get('verification_status')
+                new_status = data['verification_status']
+                update_data['verification_status'] = new_status
+
+                # If claim is verified, update the item status
+                if new_status == 'verified' and old_status != 'verified':
+                    item_result = supabase.table('items').select('*').eq('id', claim.get('item_id')).execute()
+
+                    if item_result.data and len(item_result.data) > 0:
+                        item = item_result.data[0]
+
+                        item_update = {
+                            'status': 'claimed',
+                            'user_claimed_id': claim.get('user_id'),
+                            'updated_at': datetime.utcnow().isoformat()
+                        }
+
+                        supabase.table('items').update(item_update).eq('id', claim.get('item_id')).execute()
+
+                        # Create notification for the claimer
+                        notification_data = {
+                            'user_id': claim.get('user_id'),
+                            'item_id': item.get('id'),
+                            'message': f"Your claim for '{item.get('name')}' has been verified. You can now pick it up.",
+                            'notification_type': 'claim_update',
+                            'created_at': datetime.utcnow().isoformat(),
+                            'read': False
+                        }
+
+                        supabase.table('notifications').insert(notification_data).execute()
+
+                # If claim is rejected, notify the user
+                if new_status == 'rejected' and old_status != 'rejected':
+                    item_result = supabase.table('items').select('*').eq('id', claim.get('item_id')).execute()
+
+                    if item_result.data and len(item_result.data) > 0:
+                        item = item_result.data[0]
+
+                        notification_data = {
+                            'user_id': claim.get('user_id'),
+                            'item_id': item.get('id'),
+                            'message': f"Your claim for '{item.get('name')}' has been rejected.",
+                            'notification_type': 'claim_update',
+                            'created_at': datetime.utcnow().isoformat(),
+                            'read': False
+                        }
+
+                        supabase.table('notifications').insert(notification_data).execute()
+
+            if 'admin_notes' in data:
+                update_data['admin_notes'] = data['admin_notes']
+
+            update_result = supabase.table('claims').update(update_data).eq('id', claim_id).execute()
+
+            if not update_result.data or len(update_result.data) == 0:
+                return jsonify({'error': 'Failed to update claim'}), 500
+
             return jsonify({
                 'message': 'Claim updated successfully',
-                'claim': claim.to_dict()
+                'claim': update_result.data[0]
             }), 200
-        else:
-            return jsonify({'error': 'Unauthorized to update these fields'}), 403
-    
-    # Admins can update verification status and notes
-    if is_admin():
-        if 'verification_status' in data:
-            old_status = claim.verification_status
-            new_status = data['verification_status']
-            claim.verification_status = new_status
-            
-            # If claim is verified, update the item status
-            if new_status == 'verified' and old_status != 'verified':
-                item = Item.query.get(claim.item_id)
-                if item:
-                    item.status = 'claimed'
-                    item.user_claimed_id = claim.user_id
-                    
-                    # Create notification for the claimer
-                    notification = Notification(
-                        user_id=claim.user_id,
-                        item_id=item.id,
-                        message=f"Your claim for '{item.name}' has been verified. You can now pick it up.",
-                        notification_type='claim_update'
-                    )
-                    db.session.add(notification)
-            
-            # If claim is rejected, notify the user
-            if new_status == 'rejected' and old_status != 'rejected':
-                item = Item.query.get(claim.item_id)
-                if item:
-                    notification = Notification(
-                        user_id=claim.user_id,
-                        item_id=item.id,
-                        message=f"Your claim for '{item.name}' has been rejected.",
-                        notification_type='claim_update'
-                    )
-                    db.session.add(notification)
-        
-        if 'admin_notes' in data:
-            claim.admin_notes = data['admin_notes']
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Claim updated successfully',
-            'claim': claim.to_dict()
-        }), 200
-    
-    return jsonify({'error': 'Unauthorized access'}), 403
 
-@claims_bp.route('/<int:claim_id>', methods=['DELETE'])
-@jwt_required()
+        return jsonify({'error': 'Unauthorized access'}), 403
+    except Exception as e:
+        current_app.logger.error(f"Error updating claim {claim_id}: {str(e)}")
+        return jsonify({'error': f"Failed to update claim: {str(e)}"}), 500
+
+@claims_bp.route('/<claim_id>', methods=['DELETE'])
+@supabase_auth_required
 def delete_claim(claim_id):
-    user_id = get_jwt_identity()
-    claim = Claim.query.get_or_404(claim_id)
-    
-    # Users can only delete their own pending claims, admins can delete any
-    if (claim.user_id == user_id and claim.verification_status == 'pending') or is_admin():
-        db.session.delete(claim)
-        db.session.commit()
-        
-        return jsonify({'message': 'Claim deleted successfully'}), 200
-    
-    return jsonify({'error': 'Unauthorized to delete this claim'}), 403
+    try:
+        # Get user from g object (set by supabase_auth_required)
+        user = g.user
+        user_id = user.get('id')
+
+        # Get claim from Supabase
+        claim_result = supabase.table('claims').select('*').eq('id', claim_id).execute()
+
+        if not claim_result.data or len(claim_result.data) == 0:
+            return jsonify({'error': 'Claim not found'}), 404
+
+        claim = claim_result.data[0]
+
+        # Users can only delete their own pending claims, admins can delete any
+        if (claim.get('user_id') == user_id and claim.get('verification_status') == 'pending') or user.get('role') == 'admin':
+            delete_result = supabase.table('claims').delete().eq('id', claim_id).execute()
+
+            if not delete_result.data or len(delete_result.data) == 0:
+                return jsonify({'error': 'Failed to delete claim'}), 500
+
+            return jsonify({'message': 'Claim deleted successfully'}), 200
+
+        return jsonify({'error': 'Unauthorized to delete this claim'}), 403
+    except Exception as e:
+        current_app.logger.error(f"Error deleting claim {claim_id}: {str(e)}")
+        return jsonify({'error': f"Failed to delete claim: {str(e)}"}), 500

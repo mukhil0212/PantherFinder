@@ -1,5 +1,6 @@
 // API base URL - adjust this to your backend URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+console.log('Using API base URL:', API_BASE_URL);
 
 // Helper function for making API requests
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
@@ -11,14 +12,55 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     ...options.headers as Record<string, string>,
   };
 
-  // Include auth token if available
-  const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+  // Get auth token from Supabase session
+  let token = null;
+  if (typeof window !== 'undefined') {
+    // Try localStorage first
+    token = localStorage.getItem('authToken');
+
+    // If not in localStorage, try cookies
+    if (!token) {
+      const cookies = document.cookie.split(';');
+      for (const cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'authToken') {
+          token = value;
+          console.log('Retrieved auth token from cookie');
+          break;
+        }
+      }
+    }
+
+    // If we still don't have a token, try to get it directly from Supabase
+    if (!token && window.localStorage.getItem('supabase.auth.token')) {
+      try {
+        const supabaseAuthData = JSON.parse(window.localStorage.getItem('supabase.auth.token') || '{}');
+        if (supabaseAuthData?.currentSession?.access_token) {
+          token = supabaseAuthData.currentSession.access_token;
+          console.log('Retrieved auth token directly from Supabase storage');
+          // Save it to our standard location for future use
+          localStorage.setItem('authToken', token);
+        }
+      } catch (e) {
+        console.error('Error parsing Supabase auth data:', e);
+      }
+    }
+  }
+
+  // Include token in headers if available
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
     console.log('Using auth token:', token.substring(0, 10) + '...');
   } else {
-    console.warn('No auth token available for API request');
+    console.warn('No auth token available for API request to:', endpoint);
+    // For debugging purposes, log the localStorage contents (without sensitive data)
+    if (typeof window !== 'undefined') {
+      console.log('LocalStorage keys:', Object.keys(localStorage));
+    }
   }
+
+  // Log the complete request details for debugging
+  console.log(`API Request: ${options.method || 'GET'} ${url}`, { headers });
 
   try {
     console.log(`Fetching ${url} with method ${options.method || 'GET'}`);
@@ -34,17 +76,27 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     // Log response details for debugging
     console.log('Response status:', response.status);
     console.log('Response headers:', [...response.headers.entries()]);
-    
+
     // Check if the response is empty but valid (like an empty array)
     const responseText = await response.text();
     console.log('Response body:', responseText);
-    
-    // If we got an empty response or just empty brackets [], return an empty array
-    if (!responseText || responseText.trim() === '' || responseText === '[]') {
-      console.log('Empty response received, returning empty array');
-      return { items: [] };
+
+    // Handle empty or minimal responses
+    if (!responseText || responseText.trim() === '') {
+      console.log('Empty response received, returning empty object');
+      return {};
     }
-    
+
+    if (responseText === '[]') {
+      console.log('Empty array response received, returning empty array');
+      return [];
+    }
+
+    if (responseText === '{}') {
+      console.log('Empty object response received, returning empty object');
+      return {};
+    }
+
     // Parse the JSON response
     try {
       const jsonData = JSON.parse(responseText);
@@ -84,11 +136,12 @@ const createItem = async (itemData: any) => {
   });
 };
 
-const submitItem = async (formData: FormData) => {
+const submitItem = async (formData: FormData, itemType: 'found' | 'lost' = 'found') => {
   // For file uploads, we need to use a different approach
-  const url = `${API_BASE_URL}/items`;
-
   try {
+    console.log(`Submitting ${itemType} item to API_BASE_URL:`, API_BASE_URL);
+
+    // Get the token for authentication
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
     const headers: HeadersInit = {};
 
@@ -96,28 +149,60 @@ const submitItem = async (formData: FormData) => {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(url, {
+    // Log the request details for debugging
+    // Remove any trailing slashes from API_BASE_URL to avoid Flask redirect issues
+    const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    // Use different endpoints for found and lost items
+    const submitUrl = itemType === 'lost' ? `${baseUrl}/items/lost` : `${baseUrl}/items`;
+    console.log('Submitting to URL:', submitUrl);
+    console.log('With headers:', headers);
+    console.log('Form data keys:', [...formData.keys()]);
+
+    // Make the request with specific CORS settings
+    const response = await fetch(submitUrl, {
       method: 'POST',
       headers,
       body: formData,
       mode: 'cors',
+      credentials: 'same-origin', // Changed from 'include' to 'same-origin'
     });
 
-    if (!response.ok) {
-      let errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
+    // Log response details for debugging
+    console.log('Response status:', response.status);
+    if (response.headers) {
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        console.error('Could not parse error response as JSON');
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      } catch (e) {
+        console.log('Could not log response headers:', e);
       }
-      throw new Error(errorMessage);
     }
 
-    return response.json();
+    // Check if the response is empty but valid
+    const responseText = await response.text();
+    console.log('Response body:', responseText);
+
+    // Handle empty response
+    if (!responseText || responseText.trim() === '') {
+      console.log('Empty response received, returning empty object');
+      return {};
+    }
+
+    // Parse the JSON response
+    try {
+      const jsonData = JSON.parse(responseText);
+      console.log('Parsed JSON data:', jsonData);
+      return jsonData;
+    } catch (parseError) {
+      console.error('Error parsing JSON response:', parseError);
+      throw new Error(`Failed to parse API response: ${responseText}`);
+    }
   } catch (error) {
     console.error('Error submitting item:', error);
-    throw error;
+    // Provide more detailed error information
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('Network error: Could not connect to the server. Please check if the backend server is running and accessible.');
+    }
+    throw new Error(`Failed to submit item: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
@@ -159,12 +244,25 @@ const updateClaim = async (id: string, claimData: any) => {
 
 // User Items API
 const getUserItems = async () => {
-  return fetchAPI('/users/items');
+  return fetchAPI('/items/my-items');
 };
 
 // User Claims API
 const getUserClaims = async () => {
-  return fetchAPI('/users/claims');
+  try {
+    // Try the /users/claims endpoint first (which returns {claims: [...]})
+    return await fetchAPI('/users/claims');
+  } catch (error) {
+    console.warn('Error fetching from /users/claims, trying fallback endpoint', error);
+    try {
+      // Fallback to /users/me/claims endpoint (which returns [])
+      return await fetchAPI('/users/me/claims');
+    } catch (fallbackError) {
+      console.error('Both claim endpoints failed', fallbackError);
+      // Return an empty array as a safe fallback
+      return [];
+    }
+  }
 };
 
 // Auth API
@@ -222,12 +320,39 @@ const markNotificationAsRead = async (id: string) => {
   });
 };
 
+// Messages API
+const getConversations = async () => {
+  return fetchAPI('/messages/conversations');
+};
+
+const getConversationMessages = async (receiverId: string, itemId?: string) => {
+  const queryParams = itemId ? `?item_id=${itemId}` : '';
+  return fetchAPI(`/messages/conversations/${receiverId}${queryParams}`);
+};
+
+const sendMessage = async (messageData: { receiver_id: string; content: string; item_id?: string }) => {
+  return fetchAPI('/messages/send', {
+    method: 'POST',
+    body: JSON.stringify(messageData),
+  });
+};
+
+const markMessageAsRead = async (messageId: string) => {
+  return fetchAPI(`/messages/${messageId}/read`, {
+    method: 'POST',
+  });
+};
+
+const getUnreadMessageCount = async () => {
+  return fetchAPI('/messages/unread-count');
+};
+
 // Test CORS
 const testCORS = async () => {
   try {
     // Try direct fetch first to see if CORS is working
     console.log('Making direct fetch request to CORS test endpoint');
-    const directResponse = await fetch('http://localhost:5000/api/items/test-cors', {
+    const directResponse = await fetch('http://localhost:5001/api/items/test-cors', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -272,5 +397,10 @@ export {
   changePassword,
   getNotifications,
   markNotificationAsRead,
+  getConversations,
+  getConversationMessages,
+  sendMessage,
+  markMessageAsRead,
+  getUnreadMessageCount,
   testCORS
 };

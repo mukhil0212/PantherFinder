@@ -1,19 +1,45 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
+import * as api from '../../lib/apiClient';
 
 export default function DashboardPage() {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/auth/login');
+      router.push('/auth/login?redirect=/dashboard');
     }
   }, [isAuthenticated, loading, router]);
+
+  // Fetch notifications when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const fetchNotifications = async () => {
+        try {
+          setNotificationsLoading(true);
+          const response = await api.getNotifications();
+          // Filter to only unread notifications
+          const unreadNotifications = Array.isArray(response)
+            ? response.filter(notification => !notification.read)
+            : [];
+          setNotifications(unreadNotifications);
+        } catch (err) {
+          console.error('Error fetching notifications:', err);
+        } finally {
+          setNotificationsLoading(false);
+        }
+      };
+
+      fetchNotifications();
+    }
+  }, [isAuthenticated]);
 
   if (loading) {
     return (
@@ -32,7 +58,7 @@ export default function DashboardPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300">
-          Welcome back, {user?.profile?.name || 'User'}!
+          Welcome back, {user?.name || user?.profile?.name || 'User'}!
         </p>
       </div>
 
@@ -60,14 +86,25 @@ export default function DashboardPage() {
         />
 
         <DashboardCard
-          title="Submit Item"
-          description="Report a found item"
+          title="Submit Found Item"
+          description="Report an item you've found"
           icon={
             <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           }
           href="/submit-item"
+        />
+
+        <DashboardCard
+          title="Report Lost Item"
+          description="Report an item you've lost"
+          icon={
+            <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          href="/submit-lost-item"
         />
 
         <DashboardCard
@@ -82,14 +119,32 @@ export default function DashboardPage() {
         />
 
         <DashboardCard
-          title="Notifications"
-          description="View your alerts and messages"
+          title={`Notifications ${notifications.length > 0 ? `(${notifications.length})` : ''}`}
+          description={`${notifications.length > 0 ? 'You have unread notifications' : 'View your alerts and messages'}`}
           icon={
-            <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
+            <div className="relative">
+              <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {notifications.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {notifications.length}
+                </span>
+              )}
+            </div>
           }
           href="/notifications"
+        />
+
+        <DashboardCard
+          title="Messages"
+          description="Chat with item owners and finders"
+          icon={
+            <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+          }
+          href="/messages"
         />
 
         <DashboardCard
@@ -106,6 +161,14 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+// Helper function to format image URL (for consistency with other pages)
+const formatImageUrl = (imageUrl?: string) => {
+  if (!imageUrl) return null;
+
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  return imageUrl.startsWith('http') ? imageUrl : `${API_BASE_URL}${imageUrl}`;
+};
 
 function DashboardCard({ title, description, icon, href }: {
   title: string;

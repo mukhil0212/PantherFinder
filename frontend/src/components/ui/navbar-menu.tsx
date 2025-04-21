@@ -12,6 +12,13 @@ const transition = {
   restSpeed: 0.001,
 };
 
+// Longer animation duration for menu items
+const menuTransition = {
+  type: "spring",
+  duration: 0.5,
+  bounce: 0.2,
+};
+
 export const MenuItem = ({
   setActive,
   active,
@@ -23,9 +30,26 @@ export const MenuItem = ({
   item: string;
   children?: React.ReactNode;
 }) => {
+  // Use a ref to track if the mouse is over the menu item
+  const itemRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle mouse enter with a slight delay to prevent accidental triggers
+  const handleMouseEnter = React.useCallback(() => {
+    // Small delay to prevent accidental hover
+    const timer = setTimeout(() => {
+      if (itemRef.current) {
+        setActive(item);
+      }
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [item, setActive]);
+
   return (
     <div
-      onMouseEnter={() => setActive(item)}
+      ref={itemRef}
+      onMouseEnter={handleMouseEnter}
+      onClick={() => setActive(active === item ? null : item)} // Toggle on click
       className="relative group"
     >
       <motion.p
@@ -47,14 +71,15 @@ export const MenuItem = ({
           )}
         </span>
       </motion.p>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {active === item && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.25, type: "spring", stiffness: 120 }}
+            transition={menuTransition}
             className="absolute top-[calc(100%_+_1.2rem)] left-1/2 transform -translate-x-1/2 pt-4 z-50 min-w-[220px]"
+            onClick={(e) => e.stopPropagation()} // Prevent clicks inside dropdown from closing it
           >
             <div className="bg-white dark:bg-black/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-black/[0.12] dark:border-white/[0.15] shadow-2xl animate-fadeIn">
               <div className="w-max h-full p-4">
@@ -75,9 +100,42 @@ export const Menu = ({
   setActive: (item: string | null) => void;
   children: React.ReactNode;
 }) => {
+  // Add a click handler to the document to close the menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if the click is outside the menu
+      if (!target.closest('nav')) {
+        setActive(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [setActive]);
+
+  // Use a ref to track if the mouse is over the menu
+  const menuRef = React.useRef<HTMLElement>(null);
+
+  // Handle mouse leave with a slight delay to prevent accidental triggers
+  const handleMouseLeave = React.useCallback(() => {
+    // Small delay to prevent accidental leave
+    const timer = setTimeout(() => {
+      if (!menuRef.current?.matches(':hover')) {
+        setActive(null);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [setActive]);
+
   return (
     <nav
-      onMouseLeave={() => setActive(null)}
+      ref={menuRef}
+      onMouseLeave={handleMouseLeave}
       className="relative rounded-full border border-transparent dark:bg-black/80 dark:border-white/[0.15] bg-white/90 shadow-lg flex items-center justify-between px-10 py-4 backdrop-blur-lg transition-all duration-200"
     >
       {children}
@@ -119,11 +177,14 @@ export const ProductItem = ({
 
 export function HoveredLink({ children, ...rest }: any) {
   return (
-    <a
+    <motion.a
       {...rest}
       className="transition-all duration-150 hover:pl-2 hover:text-blue-600 dark:hover:text-blue-400 font-medium py-1 px-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+      whileHover={{ x: 4 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
       {children}
-    </a>
+    </motion.a>
   );
 }
