@@ -28,69 +28,53 @@ export function ThemeProvider({
   storageKey = "theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (typeof window !== "undefined" && (localStorage.getItem(storageKey) as Theme)) || defaultTheme
-  );
+  const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [mounted, setMounted] = useState(false);
 
+  // On mount, read theme from localStorage or system
   useEffect(() => {
+    let initialTheme = defaultTheme;
+    if (typeof window !== "undefined") {
+      const persisted = localStorage.getItem(storageKey) as Theme | null;
+      if (persisted) {
+        initialTheme = persisted;
+      } else if (defaultTheme === "system") {
+        initialTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+    }
+    setThemeState(initialTheme);
     setMounted(true);
-  }, []);
+  }, [defaultTheme, storageKey]);
 
+  // Apply theme to document root and store resolved theme
   useEffect(() => {
     if (!mounted) return;
-
     const root = window.document.documentElement;
-    console.log("[ThemeProvider] Current classList:", [...root.classList]);
-    console.log("[ThemeProvider] Setting theme to:", theme);
-
-    // First remove both themes
     root.classList.remove("light", "dark");
-
+    let appliedTheme = theme;
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-
-      root.classList.add(systemTheme);
-      console.log("[ThemeProvider] System theme applied:", systemTheme);
-
-      // Also store the resolved theme for components that need to know the actual theme
-      localStorage.setItem("resolved-theme", systemTheme);
-      return;
+      appliedTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
+    root.classList.add(appliedTheme);
+    localStorage.setItem("resolved-theme", appliedTheme);
+    localStorage.setItem(storageKey, theme);
+  }, [theme, mounted, storageKey]);
 
-    // Apply the selected theme
-    root.classList.add(theme);
-
-    // Store the resolved theme
-    localStorage.setItem("resolved-theme", theme);
-
-    console.log("[ThemeProvider] Theme applied:", theme, "Current classList:", [...root.classList]);
-  }, [theme, mounted]);
-
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
   };
 
-  if (!mounted) return null;
-
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <ThemeProviderContext.Provider value={{ theme, setTheme }} {...props}>
       {children}
     </ThemeProviderContext.Provider>
   );
 }
 
-export const useTheme = () => {
+export function useTheme() {
   const context = useContext(ThemeProviderContext);
-
-  if (context === undefined)
+  if (context === undefined) {
     throw new Error("useTheme must be used within a ThemeProvider");
-
+  }
   return context;
-};
+}

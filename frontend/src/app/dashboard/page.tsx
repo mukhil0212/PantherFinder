@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../lib/apiClient';
+import { MagicCard } from '@/components/ui/magic-card';
 
 export default function DashboardPage() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -54,10 +55,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-[var(--background)] text-[var(--foreground)]">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-300">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="mt-2">
           Welcome back, {user?.name || user?.profile?.name || 'User'}!
         </p>
       </div>
@@ -112,7 +113,7 @@ export default function DashboardPage() {
           description="Browse all lost and found items"
           icon={
             <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           }
           href="/items"
@@ -177,16 +178,18 @@ function DashboardCard({ title, description, icon, href }: {
   href: string;
 }) {
   return (
-    <Link href={href} className="block">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow duration-300 h-full">
-        <div className="flex items-center mb-4">
-          <div className="rounded-md bg-blue-100 dark:bg-blue-900/30 p-3 mr-4">
-            {icon}
+    <MagicCard className="h-full w-full rounded-xl p-0" gradientSize={64}>
+      <Link href={href} className="block h-full w-full">
+        <div className="bg-white dark:bg-gray-800 rounded-xl pt-3 pb-6 px-6 shadow-md hover:shadow-lg transition-shadow duration-300 h-full w-full">
+          <div className="flex items-center mb-4">
+            <div className="rounded-md bg-blue-100 dark:bg-blue-900/30 p-3 mr-4">
+              {icon}
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
+          <p className="text-gray-600 dark:text-gray-300">{description}</p>
         </div>
-        <p className="text-gray-600 dark:text-gray-300">{description}</p>
-      </div>
-    </Link>
+      </Link>
+    </MagicCard>
   );
 }

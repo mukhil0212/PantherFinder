@@ -1,9 +1,10 @@
 'use client';
 
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../theme-provider';
 
 export default function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
   
   return (
     <button
@@ -15,7 +16,7 @@ export default function ThemeToggle() {
         // Sun icon for light mode
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
-          className="h-6 w-6 text-yellow-300" 
+          className="h-6 w-6 text-[var(--foreground)]" 
           fill="none" 
           viewBox="0 0 24 24" 
           stroke="currentColor"
@@ -31,7 +32,7 @@ export default function ThemeToggle() {
         // Moon icon for dark mode
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
-          className="h-6 w-6 text-gray-700" 
+          className="h-6 w-6 text-[var(--foreground)]" 
           fill="none" 
           viewBox="0 0 24 24" 
           stroke="currentColor"

@@ -55,7 +55,7 @@ export const MenuItem = ({
       <motion.p
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.97 }}
-        className="cursor-pointer text-black dark:text-white font-semibold px-3 py-2 rounded-lg transition-all duration-200 bg-opacity-0 group-hover:bg-opacity-80 group-hover:shadow-lg group-hover:bg-gray-100 dark:group-hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="cursor-pointer text-[var(--foreground)] font-semibold px-3 py-2 rounded-lg transition-all duration-200 bg-opacity-0 group-hover:bg-opacity-80 group-hover:shadow-lg group-hover:bg-[var(--background)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
         <span className="relative">
           {item}
@@ -81,7 +81,7 @@ export const MenuItem = ({
             className="absolute top-[calc(100%_+_1.2rem)] left-1/2 transform -translate-x-1/2 pt-4 z-50 min-w-[220px]"
             onClick={(e) => e.stopPropagation()} // Prevent clicks inside dropdown from closing it
           >
-            <div className="bg-white dark:bg-black/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-black/[0.12] dark:border-white/[0.15] shadow-2xl animate-fadeIn">
+            <div className="bg-[var(--background)]/90 dark:bg-[var(--background)]/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-black/[0.12] dark:border-white/[0.15] shadow-2xl animate-fadeIn">
               <div className="w-max h-full p-4">
                 {children}
               </div>
@@ -136,7 +136,7 @@ export const Menu = ({
     <nav
       ref={menuRef}
       onMouseLeave={handleMouseLeave}
-      className="relative rounded-full border border-transparent dark:bg-black/80 dark:border-white/[0.15] bg-white/90 shadow-lg flex items-center justify-between px-10 py-4 backdrop-blur-lg transition-all duration-200"
+      className="relative rounded-full border border-transparent dark:bg-[var(--background)]/80 bg-[var(--background)]/90 shadow-lg flex items-center justify-between px-10 py-4 backdrop-blur-lg transition-all duration-200"
     >
       {children}
     </nav>
@@ -164,7 +164,7 @@ export const ProductItem = ({
         className="shrink-0 rounded-md shadow-2xl"
       />
       <div>
-        <h4 className="text-xl font-bold mb-1 text-black dark:text-white">
+        <h4 className="text-xl font-bold mb-1 text-[var(--foreground)]">
           {title}
         </h4>
         <p className="text-neutral-700 text-sm max-w-[10rem] dark:text-neutral-300">

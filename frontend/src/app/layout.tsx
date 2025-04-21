@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { MagnifyTransitionProvider } from "@/components/MagnifyTransitionContext";
 import { AuthProvider } from "../context/AuthContext";
 import NavbarDemo from "@/components/navbar-menu-demo";
 import ThemeScript from "./theme-script";
 import { ThemeInitScript } from "./theme-init-script";
+import ClientZoomWrapper from '@/components/ClientZoomWrapper';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,16 +29,20 @@ export default function RootLayout({
       <head>
         <ThemeInitScript />
       </head>
-      <body className={`${inter.variable} font-sans antialiased bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100`}>
+      <body className={`${inter.variable} font-sans antialiased bg-[var(--background)] text-[var(--foreground)]`}>
         <ThemeProvider defaultTheme="light">
           <AuthProvider>
-            <div className="min-h-screen flex flex-col">
-              <ThemeScript />
-              <NavbarDemo />
-              <main className="flex-grow pt-20">
-                {children}
-              </main>
-            </div>
+            <MagnifyTransitionProvider>
+              <div className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)]">
+                <ThemeScript />
+                <NavbarDemo />
+                <main className="flex-grow pt-20 bg-[var(--background)] text-[var(--foreground)]">
+                  <ClientZoomWrapper>
+                    {children}
+                  </ClientZoomWrapper>
+                </main>
+              </div>
+            </MagnifyTransitionProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

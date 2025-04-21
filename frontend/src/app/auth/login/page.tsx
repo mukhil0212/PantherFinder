@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
+import { useMagnifyTransition } from '@/components/MagnifyTransitionContext';
+import { BorderBeam } from '@/components/ui/border-beam';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -14,6 +16,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+  const { trigger } = useMagnifyTransition();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -27,18 +30,7 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-
-      // Check if there's a redirect URL in the query parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const redirectUrl = urlParams.get('redirect');
-
-      if (redirectUrl) {
-        // Redirect to the original destination
-        router.push(redirectUrl);
-      } else {
-        // Default redirect to items page
-        router.push('/items');
-      }
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to login. Please check your credentials.');
     } finally {
@@ -47,7 +39,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+    <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md relative overflow-hidden">
+      <BorderBeam size={80} duration={4} colorFrom="#ffaa40" colorTo="#9c40ff" />
       <h1 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">Login to PantherFinder</h1>
 
       {error && (
@@ -89,10 +82,11 @@ export default function LoginPage() {
 
         <button
           type="submit"
+          className="w-full py-2 px-4 bg-black text-white rounded-md font-semibold hover:bg-gray-900 transition-colors duration-200 mt-4 relative overflow-hidden"
           disabled={isLoading}
-          className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Logging in...' : 'Login'}
+          <span className="relative z-10">{isLoading ? 'Logging in...' : 'Login'}</span>
+          <BorderBeam size={60} duration={3} colorFrom="#ffaa40" colorTo="#9c40ff" style={{top:0,left:0,right:0,bottom:0}} />
         </button>
       </form>
 
