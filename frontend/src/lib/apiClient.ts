@@ -34,21 +34,33 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     // Log response details for debugging
     console.log('Response status:', response.status);
     console.log('Response headers:', [...response.headers.entries()]);
+    
+    // Check if the response is empty but valid (like an empty array)
+    const responseText = await response.text();
+    console.log('Response body:', responseText);
+    
+    // If we got an empty response or just empty brackets [], return an empty array
+    if (!responseText || responseText.trim() === '' || responseText === '[]') {
+      console.log('Empty response received, returning empty array');
+      return { items: [] };
+    }
+    
+    // Parse the JSON response
+    try {
+      const jsonData = JSON.parse(responseText);
+      console.log('Parsed JSON data:', jsonData);
+      return jsonData;
+    } catch (parseError) {
+      console.error('Error parsing JSON response:', parseError);
+      throw new Error(`Failed to parse API response: ${responseText}`);
+    }
 
     // Handle HTTP errors
     if (!response.ok) {
       let errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        console.error('API error response:', errorData);
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        console.error('Could not parse error response as JSON');
-      }
+      console.error('API error response status:', response.status);
       throw new Error(errorMessage);
     }
-
-    return response.json();
   } catch (error) {
     console.error('Request details:', { url, endpoint, options });
     throw new Error(`API request failed: ${error instanceof Error ? error.message : String(error)}`);

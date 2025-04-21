@@ -97,6 +97,29 @@ def delete_user(user_id):
     
     return jsonify({'message': 'User deleted successfully'}), 200
 
+@users_bp.route('/items', methods=['GET'])
+@jwt_required()
+def get_current_user_items():
+    """Return items where the current user is either the finder or the claimer."""
+    user_id = get_jwt_identity()
+
+    # Get paginated results
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
+    items_query = Item.query.filter(
+        (Item.user_found_id == user_id) | (Item.user_claimed_id == user_id)
+    )
+
+    items = items_query.order_by(Item.created_at.desc()).paginate(page=page, per_page=per_page)
+
+    return jsonify({
+        'items': [item.to_dict() for item in items.items],
+        'total': items.total,
+        'pages': items.pages,
+        'current_page': page
+    }), 200
+
 @users_bp.route('/<int:user_id>/items/found', methods=['GET'])
 @jwt_required()
 def get_user_found_items(user_id):
@@ -156,6 +179,26 @@ def get_user_claims(user_id):
     
     claims = Claim.query.filter_by(user_id=user_id).paginate(page=page, per_page=per_page)
     
+    return jsonify({
+        'claims': [claim.to_dict() for claim in claims.items],
+        'total': claims.total,
+        'pages': claims.pages,
+        'current_page': page
+    }), 200
+
+@users_bp.route('/claims', methods=['GET'])
+@jwt_required()
+def get_current_user_claims():
+    """Return claims created by the current user."""
+    user_id = get_jwt_identity()
+
+    # Get paginated results
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
+    claims_query = Claim.query.filter_by(user_id=user_id)
+    claims = claims_query.order_by(Claim.created_at.desc()).paginate(page=page, per_page=per_page)
+
     return jsonify({
         'claims': [claim.to_dict() for claim in claims.items],
         'total': claims.total,

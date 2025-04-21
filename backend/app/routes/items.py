@@ -40,26 +40,42 @@ def get_items():
         status = request.args.get('status')
         search = request.args.get('search')
         
+        print(f"Supabase client type: {type(supabase)}")
+        print(f"Supabase URL: {os.environ.get('SUPABASE_URL')}")
+        print(f"Supabase Key length: {len(os.environ.get('SUPABASE_KEY', '')) if os.environ.get('SUPABASE_KEY') else 'None'}")
+        
         # Start with base query
+        print("Creating query for 'items' table")
         query = supabase.table('items').select('*')
+        print("Query created successfully")
         
         # Apply filters if provided
         if category:
+            print(f"Filtering by category: {category}")
             query = query.eq('category', category)
         if status:
+            print(f"Filtering by status: {status}")
             query = query.eq('status', status)
         if search:
+            print(f"Filtering by search term: {search}")
             query = query.ilike('name', f'%{search}%')
             
         # Execute query
+        print("Executing Supabase query...")
         response = query.execute()
+        print(f"Query executed. Response type: {type(response)}")
         
-        if response.data is not None:
+        if hasattr(response, 'data') and response.data is not None:
+            print(f"Found {len(response.data)} items")
             return jsonify(response.data), 200
-        return jsonify([]), 200
+        else:
+            print("No data found or response.data is None")
+            return jsonify([]), 200
     except Exception as e:
         print(f"Error fetching items: {str(e)}")
-        return jsonify({'error': 'Failed to fetch items'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to fetch items: {str(e)}'}), 500
     if search:
         search_term = f"%{search}%"
         query = query.filter(

@@ -5,7 +5,7 @@ import { cn } from "@/utils/cn";
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/context/AuthContext";
-import { motion } from "framer-motion";
+// Temporarily removed framer-motion import to fix build issues
 
 export default function NavbarDemo() {
   return (
@@ -23,7 +23,7 @@ function Navbar({ className }: { className?: string }) {
     <div
       className={cn("fixed top-0 inset-x-0 max-w-6xl mx-auto z-50 px-4", className)}
     >
-      <motion.div initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 90, damping: 12 }}>
+      <div className="animate-fade-in-down">
         <Menu setActive={setActive}>
           <Link href="/" className="mr-6 flex items-center gap-2 group/logo">
             <img src="/logo.png" alt="PantherFinder Logo" className="h-10 w-10 rounded-full shadow-lg border-2 border-blue-600 dark:border-blue-400 bg-white dark:bg-black transition-all duration-300 group-hover/logo:scale-105" />
@@ -95,7 +95,7 @@ function Navbar({ className }: { className?: string }) {
             )}
           </div>
         </Menu>
-      </motion.div>
+      </div>
     </div>
   );
 }
