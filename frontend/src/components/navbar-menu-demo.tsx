@@ -57,9 +57,10 @@ function Navbar({ className }: { className?: string }) {
                   <h4 className="font-bold mb-2">Locations</h4>
                   <div className="flex flex-col space-y-2">
                     <HoveredLink href="/items?location=Library">Library</HoveredLink>
-                    <HoveredLink href="/items?location=Student Union">Student Union</HoveredLink>
-                    <HoveredLink href="/items?location=Classroom Building">Classroom Building</HoveredLink>
+                    <HoveredLink href="/items?location=Langdale Hall">Langdale Hall</HoveredLink>
+                    <HoveredLink href="/items?location=Aderhold">Aderhold</HoveredLink>
                     <HoveredLink href="/items?location=Recreation Center">Recreation Center</HoveredLink>
+                    <HoveredLink href="/items?location=Student Center West">Student Center West</HoveredLink>
                   </div>
                 </div>
               </div>

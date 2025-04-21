@@ -37,12 +37,10 @@ export default function SubmitItemPage() {
   // Locations for dropdown
   const locations = [
     'Library',
-    'Student Union',
-    'Classroom Building',
+    'Langdale Hall',
+    'Aderhold',
     'Recreation Center',
-    'Cafeteria',
-    'Gym',
-    'Parking Lot',
+    'Student Center West',
     'Other',
   ];
 
