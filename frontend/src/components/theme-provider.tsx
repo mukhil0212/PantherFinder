@@ -31,6 +31,11 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(
     () => (typeof window !== "undefined" && (localStorage.getItem(storageKey) as Theme)) || defaultTheme
   );
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -43,10 +48,12 @@ export function ThemeProvider({
         : "light";
 
       root.classList.add(systemTheme);
+      console.log("[ThemeProvider] System theme detected:", systemTheme);
       return;
     }
 
     root.classList.add(theme);
+    console.log("[ThemeProvider] Theme set:", theme);
   }, [theme]);
 
   const value = {
@@ -56,6 +63,8 @@ export function ThemeProvider({
       setTheme(theme);
     },
   };
+
+  if (!mounted) return null;
 
   return (
     <ThemeProviderContext.Provider {...props} value={value}>

@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { cn } from "@/utils/cn";
+import { motion, AnimatePresence } from "framer-motion";
 
 const transition = {
   type: "spring",
@@ -23,23 +24,46 @@ export const MenuItem = ({
   children?: React.ReactNode;
 }) => {
   return (
-    <div onMouseEnter={() => setActive(item)} className="relative">
-      <p
-        className="cursor-pointer text-black hover:opacity-[0.9] dark:text-white font-medium px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+    <div
+      onMouseEnter={() => setActive(item)}
+      className="relative group"
+    >
+      <motion.p
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.97 }}
+        className="cursor-pointer text-black dark:text-white font-semibold px-3 py-2 rounded-lg transition-all duration-200 bg-opacity-0 group-hover:bg-opacity-80 group-hover:shadow-lg group-hover:bg-gray-100 dark:group-hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
-        {item}
-      </p>
-      {active !== null && (
-        <div className="absolute top-[calc(100%_+_1.2rem)] left-1/2 transform -translate-x-1/2 pt-4 z-50 transition-all duration-300 ease-in-out">
+        <span className="relative">
+          {item}
           {active === item && (
-            <div className="bg-white dark:bg-black backdrop-blur-sm rounded-2xl overflow-hidden border border-black/[0.2] dark:border-white/[0.2] shadow-xl animate-fadeIn">
+            <motion.span
+              layoutId="menu-underline"
+              className="absolute left-0 right-0 -bottom-1 h-[3px] rounded bg-blue-500 dark:bg-blue-400"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2 }}
+            />
+          )}
+        </span>
+      </motion.p>
+      <AnimatePresence>
+        {active === item && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.25, type: "spring", stiffness: 120 }}
+            className="absolute top-[calc(100%_+_1.2rem)] left-1/2 transform -translate-x-1/2 pt-4 z-50 min-w-[220px]"
+          >
+            <div className="bg-white dark:bg-black/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-black/[0.12] dark:border-white/[0.15] shadow-2xl animate-fadeIn">
               <div className="w-max h-full p-4">
                 {children}
               </div>
             </div>
-          )}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -53,8 +77,8 @@ export const Menu = ({
 }) => {
   return (
     <nav
-      onMouseLeave={() => setActive(null)} // resets the state
-      className="relative rounded-full border border-transparent dark:bg-black dark:border-white/[0.2] bg-white shadow-input flex items-center justify-between px-8 py-4"
+      onMouseLeave={() => setActive(null)}
+      className="relative rounded-full border border-transparent dark:bg-black/80 dark:border-white/[0.15] bg-white/90 shadow-lg flex items-center justify-between px-10 py-4 backdrop-blur-lg transition-all duration-200"
     >
       {children}
     </nav>
@@ -93,13 +117,13 @@ export const ProductItem = ({
   );
 };
 
-export const HoveredLink = ({ children, ...rest }: any) => {
+export function HoveredLink({ children, ...rest }: any) {
   return (
     <a
       {...rest}
-      className="text-neutral-700 dark:text-neutral-200 hover:text-black "
+      className="transition-all duration-150 hover:pl-2 hover:text-blue-600 dark:hover:text-blue-400 font-medium py-1 px-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
     >
       {children}
     </a>
   );
-};
+}
