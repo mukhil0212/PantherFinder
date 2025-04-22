@@ -65,11 +65,12 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api
 - The navbar height and background have been adjusted for a cleaner, more modern look.
 - The aurora text effect is used for the PantherFinder brand name for increased visual appeal.
 - Non-standard CSS at-rules have been removed for full compatibility with Tailwind CSS and modern build tools.
-
+<!-- **UPDATE -->
 ### Accessibility & UX
 
 - All important text and error messages are styled for maximum readability.
 - The login and dashboard pages have been improved for accessibility and feedback clarity.
+-   
 
 ### Backend Setup
 
