@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../lib/apiClient';
 import Link from 'next/link';
+import supabase from '../../lib/supabaseClient';
 
 interface Conversation {
   conversation_id: string;
@@ -32,36 +33,65 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Function to fetch conversations
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      const response = await api.getConversations();
+      console.log('Conversations:', response);
+
+      // Filter out conversations with yourself
+      const filteredConversations = (response.conversations || []).filter(
+        conversation => conversation.other_user_id !== user?.id
+      );
+
+      setConversations(filteredConversations);
+    } catch (err: any) {
+      console.error('Error fetching conversations:', err);
+      setError(err.message || 'Failed to load conversations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/auth/login?redirect=/messages');
       return;
     }
 
-    const fetchConversations = async () => {
-      try {
-        setLoading(true);
-        const response = await api.getConversations();
-        console.log('Conversations:', response);
-
-        // Filter out conversations with yourself
-        const filteredConversations = (response.conversations || []).filter(
-          conversation => conversation.other_user_id !== user?.id
-        );
-
-        setConversations(filteredConversations);
-      } catch (err: any) {
-        console.error('Error fetching conversations:', err);
-        setError(err.message || 'Failed to load conversations');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (isAuthenticated) {
       fetchConversations();
     }
   }, [isAuthenticated, authLoading, router]);
+
+  // Set up real-time subscription for new messages
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    console.log('Setting up real-time subscription for conversations');
+
+    // Subscribe to new messages where the current user is the receiver
+    const subscription = supabase
+      .channel('new-messages-channel')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver_id=eq.${user.id}` // Messages sent to current user
+      }, (payload) => {
+        console.log('New message received, refreshing conversations:', payload);
+        // Refresh the conversations list when a new message is received
+        fetchConversations();
+      })
+      .subscribe();
+
+    // Clean up subscription on unmount
+    return () => {
+      console.log('Cleaning up real-time subscription');
+      supabase.channel('new-messages-channel').unsubscribe();
+    };
+  }, [isAuthenticated, user?.id]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -109,7 +139,19 @@ export default function MessagesPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Messages</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
+        <button
+          onClick={fetchConversations}
+          className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
+          title="Refresh conversations"
+          disabled={loading}
+        >
+          <svg className="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
 
       {conversations.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">

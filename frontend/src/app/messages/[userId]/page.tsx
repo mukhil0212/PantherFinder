@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 import * as api from '../../../lib/apiClient';
 import Link from 'next/link';
+import supabase from '../../../lib/supabaseClient';
 
 interface Message {
   id: string;
@@ -108,11 +109,91 @@ export default function ConversationPage() {
       }
     };
 
+  // Function to manually refresh messages
+  const refreshMessages = async () => {
+    if (!isAuthenticated || !userId) return;
+
+    try {
+      setLoading(true);
+      const response = await api.getConversationMessages(userId as string, itemId || undefined);
+      console.log('Refreshed messages:', response);
+
+      if (response.messages) {
+        setMessages(response.messages);
+      }
+    } catch (err: any) {
+      console.error('Error refreshing messages:', err);
+      setError(err.message || 'Failed to refresh messages');
+    } finally {
+      setLoading(false);
+    }
+  };
+
     if (isAuthenticated && userId) {
       fetchMessages();
       fetchItem();
     }
   }, [isAuthenticated, authLoading, userId, itemId, router]);
+
+  // Set up real-time subscription for new messages
+  useEffect(() => {
+    if (!isAuthenticated || !userId || !user?.id) return;
+
+    console.log('Setting up real-time subscription for messages');
+
+    // Enable real-time subscription for the messages table
+    const subscription = supabase
+      .channel('messages-channel')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `sender_id=eq.${userId},receiver_id=eq.${user.id}` // Messages sent to current user
+      }, (payload) => {
+        console.log('New message received:', payload);
+        const newMessage = payload.new;
+
+        // Check if this message belongs to the current conversation
+        if (
+          (newMessage.sender_id === userId && newMessage.receiver_id === user.id) ||
+          (newMessage.sender_id === user.id && newMessage.receiver_id === userId)
+        ) {
+          // If item_id is specified, make sure it matches
+          if (itemId && newMessage.item_id !== itemId) return;
+
+          // Add the new message to the list
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              ...newMessage,
+              is_sender: newMessage.sender_id === user.id
+            }
+          ]);
+        }
+      })
+      .subscribe();
+
+    // Also subscribe to messages sent by the current user
+    const outgoingSubscription = supabase
+      .channel('outgoing-messages-channel')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `sender_id=eq.${user.id},receiver_id=eq.${userId}` // Messages sent by current user
+      }, (payload) => {
+        console.log('Outgoing message confirmed:', payload);
+        // We don't need to add these messages as they're already added when sent
+      })
+      .subscribe();
+
+    // Clean up subscription on unmount
+    return () => {
+      console.log('Cleaning up real-time subscriptions');
+      supabase.channel('messages-channel').unsubscribe();
+      supabase.channel('outgoing-messages-channel').unsubscribe();
+    };
+  }, [isAuthenticated, userId, user?.id, itemId]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -227,14 +308,27 @@ export default function ConversationPage() {
           </h1>
         </div>
 
-        {item && (
-          <Link
-            href={`/items/${item.id}`}
-            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={refreshMessages}
+            className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
+            title="Refresh messages"
+            disabled={loading}
           >
-            View Item: {item.name}
-          </Link>
-        )}
+            <svg className="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+
+          {item && (
+            <Link
+              href={`/items/${item.id}`}
+              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              View Item: {item.name}
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col h-[70vh]">
