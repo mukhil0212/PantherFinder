@@ -62,6 +62,26 @@ export default function ConversationPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Function to manually refresh messages
+  const refreshMessages = async () => {
+    if (!isAuthenticated || !userId) return;
+
+    try {
+      setLoading(true);
+      const response = await api.getConversationMessages(userId as string, itemId || undefined);
+      console.log('Refreshed messages:', response);
+
+      if (response.messages) {
+        setMessages(response.messages);
+      }
+    } catch (err: any) {
+      console.error('Error refreshing messages:', err);
+      setError(err.message || 'Failed to refresh messages');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch messages
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -108,26 +128,6 @@ export default function ConversationPage() {
         }
       }
     };
-
-  // Function to manually refresh messages
-  const refreshMessages = async () => {
-    if (!isAuthenticated || !userId) return;
-
-    try {
-      setLoading(true);
-      const response = await api.getConversationMessages(userId as string, itemId || undefined);
-      console.log('Refreshed messages:', response);
-
-      if (response.messages) {
-        setMessages(response.messages);
-      }
-    } catch (err: any) {
-      console.error('Error refreshing messages:', err);
-      setError(err.message || 'Failed to refresh messages');
-    } finally {
-      setLoading(false);
-    }
-  };
 
     if (isAuthenticated && userId) {
       fetchMessages();
@@ -229,15 +229,24 @@ export default function ConversationPage() {
         messageData.item_id = itemId;
       }
 
-      const response = await api.sendMessage(messageData);
-      console.log('Message sent:', response);
+      try {
+        const response = await api.sendMessage(messageData);
+        console.log('Message sent:', response);
 
-      // Add the new message to the list
-      if (response.data) {
-        setMessages([...messages, {
-          ...response.data,
-          is_sender: true
-        }]);
+        // Add the new message to the list
+        if (response.data) {
+          setMessages([...messages, {
+            ...response.data,
+            is_sender: true
+          }]);
+        }
+      } catch (sendError: any) {
+        console.error('Error in sendMessage API call:', sendError);
+        // Check if it's an RLS policy error
+        if (sendError.message && sendError.message.includes('row-level security policy')) {
+          throw new Error('Permission denied: Unable to send message due to security policy. Please try again later.');
+        }
+        throw sendError;
       }
 
       // Clear the input

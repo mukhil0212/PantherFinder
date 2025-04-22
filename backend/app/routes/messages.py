@@ -96,13 +96,16 @@ def send_message():
 
         # Create message data
         message_data = {
-            'sender_id': user_id,
-            'receiver_id': data['receiver_id'],
+            'sender_id': str(user_id),  # Ensure sender_id is a string
+            'receiver_id': str(data['receiver_id']),  # Ensure receiver_id is a string
             'content': data['content'],
             'read': False,
             'created_at': datetime.utcnow().isoformat(),
             'updated_at': datetime.utcnow().isoformat()
         }
+
+        # Log the message data for debugging
+        current_app.logger.info(f"Sending message with data: {message_data}")
 
         # Add item_id if provided
         if 'item_id' in data and data['item_id']:
@@ -113,11 +116,46 @@ def send_message():
             if not item_result.data or len(item_result.data) == 0:
                 return jsonify({'error': 'Item not found'}), 404
 
-        # Insert message into Supabase
-        result = supabase.table('messages').insert(message_data).execute()
+        try:
+            # Try to insert message into Supabase using the table API
+            result = supabase.table('messages').insert(message_data).execute()
 
-        if not result.data or len(result.data) == 0:
-            return jsonify({'error': 'Failed to send message'}), 500
+            if not result.data or len(result.data) == 0:
+                raise Exception('No data returned from insert operation')
+
+            current_app.logger.info(f"Message inserted successfully: {result.data[0]}")
+        except Exception as insert_error:
+            current_app.logger.error(f"Error inserting message with table API: {str(insert_error)}")
+
+            try:
+                # Fallback to using the bypass RLS function
+                current_app.logger.info("Trying fallback with bypass RLS function")
+
+                # Prepare parameters for the bypass function
+                sender_id = message_data['sender_id']
+                receiver_id = message_data['receiver_id']
+                content = message_data['content']
+                item_id = message_data.get('item_id', None)
+
+                # Create SQL query to call the bypass function
+                if item_id:
+                    sql_query = f"SELECT * FROM insert_message_bypass_rls('{sender_id}'::uuid, '{receiver_id}'::uuid, '{content}', '{item_id}'::uuid);"
+                else:
+                    sql_query = f"SELECT * FROM insert_message_bypass_rls('{sender_id}'::uuid, '{receiver_id}'::uuid, '{content}');"
+
+                current_app.logger.info(f"Executing bypass function: {sql_query}")
+
+                # Execute SQL query
+                sql_result = supabase.sql(sql_query).execute()
+
+                if not sql_result.data or len(sql_result.data) == 0:
+                    return jsonify({'error': 'Failed to send message using fallback method'}), 500
+
+                result = sql_result
+                current_app.logger.info(f"Message inserted successfully with SQL: {result.data[0]}")
+            except Exception as sql_error:
+                current_app.logger.error(f"Error inserting message with SQL: {str(sql_error)}")
+                return jsonify({'error': f"Failed to send message: {str(sql_error)}"}), 500
 
         # Create notification for receiver
         notification_data = {

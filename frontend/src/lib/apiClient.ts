@@ -109,8 +109,20 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 
     // Handle HTTP errors
     if (!response.ok) {
-      const errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
+      let errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
       console.error('API error response status:', response.status);
+
+      // Try to parse the error response for more details
+      try {
+        const errorData = JSON.parse(responseText);
+        if (errorData.error) {
+          errorMessage = errorData.error;
+          console.error('Detailed error message:', errorData.error);
+        }
+      } catch (parseError) {
+        console.error('Could not parse error response:', parseError);
+      }
+
       throw new Error(errorMessage);
     }
   } catch (error) {
