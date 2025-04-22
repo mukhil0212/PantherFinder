@@ -39,7 +39,7 @@ const formatStatus = (status?: string) => {
 
 export default function ItemDetailPage() {
   const { id } = useParams();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
   const [claimDescription, setClaimDescription] = useState('');
